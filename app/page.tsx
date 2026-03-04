@@ -40,7 +40,7 @@ export default function HomePage() {
           Today&apos;s date ({now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}) in every major calendar:
         </p>
         <section
-          className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:gap-5"
+          className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:gap-5"
           aria-label="Calendar cards"
         >
           {calendars.map((info) => (
