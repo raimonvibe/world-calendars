@@ -5,6 +5,7 @@ import { CALENDAR_NAMES, CALENDAR_ICONS } from "@/lib/calendarMeta";
 import { MONTH_RANGES } from "@/lib/calendarViews";
 import type { CalendarId } from "@/lib/types";
 import DarkModeToggle from "@/components/DarkModeToggle";
+import Footer from "@/components/Footer";
 import MonthPicker from "./MonthPicker";
 import type { MonthOption } from "./MonthPicker";
 
@@ -125,6 +126,7 @@ export default function MonthViewLayout({
 
       <main className="mx-auto min-w-0 max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
         {children}
+        <Footer />
       </main>
     </div>
   );

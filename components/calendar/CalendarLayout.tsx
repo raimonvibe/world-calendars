@@ -4,6 +4,7 @@ import { CALENDAR_GRADIENTS, CALENDAR_GRADIENTS_DARK } from "@/lib/calendarTheme
 import { CALENDAR_NAMES, CALENDAR_ICONS } from "@/lib/calendarMeta";
 import type { CalendarId } from "@/lib/types";
 import DarkModeToggle from "@/components/DarkModeToggle";
+import Footer from "@/components/Footer";
 
 type CalendarLayoutProps = {
   calendarId: CalendarId;
@@ -90,6 +91,7 @@ export default function CalendarLayout({
 
       <main className="mx-auto min-w-0 max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
         {children}
+        <Footer />
       </main>
     </div>
   );
