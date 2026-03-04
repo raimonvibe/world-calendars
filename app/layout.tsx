@@ -16,6 +16,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "World Calendar Hub",
   description: "Today's date in 18 major calendars — converters, holidays, and quick facts.",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export const viewport = {
