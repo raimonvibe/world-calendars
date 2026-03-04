@@ -6,9 +6,11 @@ const BAHAI_MONTH_NAMES = [
   "ʻIzzat", "Mashíyyat", "ʻIlm", "Qudrat", "Qawl", "Masáʼil", "Sharaf", "Sulṭán", "Mulk", "ʻAláʼ",
 ];
 
+const FEAST_INFO_EN = "Each Baha'i month begins with a Feast: a gathering for prayer, consultation, and fellowship. The nineteen Feasts anchor the Baha'i calendar and strengthen community life.";
+
 function getBahaiHolidayDefinitions(): HolidayDefinition[] {
   const list: HolidayDefinition[] = [
-    { id: "naw-ruz", nameEn: "Naw-Rúz", nameOriginal: "نوروز بهائی", type: "holiday", description: "Baha'i New Year", rule: { kind: "fixed", month: 1, day: 1 } },
+    { id: "naw-ruz", nameEn: "Naw-Rúz", nameOriginal: "نوروز بهائی", type: "holiday", description: "Baha'i New Year", rule: { kind: "fixed", month: 1, day: 1 }, infoEn: "Naw-Rúz is the Baha'i New Year, coinciding with the spring equinox in the Baha'i calendar. It is a day of joy, renewal, and celebration. Baha'is gather for prayer and festivities, and it is one of nine holy days when work is suspended." },
   ];
   for (let m = 1; m <= 19; m++) {
     list.push({
@@ -16,6 +18,7 @@ function getBahaiHolidayDefinitions(): HolidayDefinition[] {
       nameEn: `Feast of ${BAHAI_MONTH_NAMES[m - 1]}`,
       type: "observance",
       rule: { kind: "fixed", month: m, day: 1 },
+      infoEn: FEAST_INFO_EN,
     });
   }
   return list;

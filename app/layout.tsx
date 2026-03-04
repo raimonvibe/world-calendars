@@ -16,8 +16,14 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "World Calendar Hub",
   description: "Today's date in 18 major calendars — converters, holidays, and quick facts.",
+  openGraph: {
+    title: "World Calendar Hub",
+    description: "Today's date in 18 major calendars — converters, holidays, and quick facts.",
+    images: ["/social_preview_image.png"],
+  },
   icons: {
-    icon: "/favicon.ico",
+    icon: "/social_preview_image.png",
+    apple: "/social_preview_image.png",
   },
 };
 
@@ -35,12 +41,6 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <link
-          rel="icon"
-          href="/favicon.ico"
-          type="image/x-icon"
-          sizes="any"
-        />
         <link
           href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
           rel="stylesheet"
