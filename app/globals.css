@@ -51,3 +51,65 @@ body {
     radial-gradient(ellipse 80% 50% at 0% 70%, var(--gradient-mid), transparent 45%),
     linear-gradient(180deg, var(--gradient-end) 0%, var(--background) 100%);
 }
+
+/* Footer social icons — responsive, colorful */
+.footer-social-icons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0.75rem 0 0;
+}
+.footer-social-icons li {
+  margin: 0;
+}
+.footer-social-icons a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  color: #fff;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+@media (min-width: 640px) {
+  .footer-social-icons a {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+}
+.footer-social-icons a:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+.footer-social-icons a:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+.footer-social-icons .fa-xl {
+  font-size: 1rem;
+}
+@media (min-width: 640px) {
+  .footer-social-icons .fa-xl {
+    font-size: 1.125rem;
+  }
+}
+.footer-social-icons a[href*="x.com"],
+.footer-social-icons a[href*="twitter"] { background-color: #0f172a; }
+.footer-social-icons a[href*="youtube"] { background-color: #dc2626; }
+.footer-social-icons a[href*="tiktok"] { background-color: #000; }
+.footer-social-icons a[href*="instagram"] { background: linear-gradient(135deg, #f59e0b, #ec4899, #8b5cf6); }
+.footer-social-icons a[href*="medium"] { background-color: #000; }
+.footer-social-icons a[href*="github"] { background-color: #374151; }
+.footer-social-icons a[href*="linkedin"] { background-color: #0a66c2; }
+.footer-social-icons a[href*="facebook"] { background-color: #1877f2; }
+.footer-social-icons a[href^="mailto"] { background-color: #059669; }
+.dark .footer-social-icons a[href*="x.com"],
+.dark .footer-social-icons a[href*="twitter"] { background-color: #e2e8f0; color: #0f172a; }
+.dark .footer-social-icons a[href*="tiktok"],
+.dark .footer-social-icons a[href*="medium"] { background-color: #e2e8f0; color: #0f172a; }
+.dark .footer-social-icons a[href*="github"] { background-color: #9ca3af; color: #111827; }
