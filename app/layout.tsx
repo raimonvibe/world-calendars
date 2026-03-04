@@ -13,13 +13,18 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteUrl = "https://world-calendars.vercel.app";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: "World Calendar Hub",
   description: "Today's date in 18 major calendars — converters, holidays, and quick facts.",
   openGraph: {
+    url: siteUrl,
     title: "World Calendar Hub",
     description: "Today's date in 18 major calendars — converters, holidays, and quick facts.",
     images: ["/social_preview_image.png"],
+    type: "website",
   },
   icons: {
     icon: "/social_preview_image.png",
