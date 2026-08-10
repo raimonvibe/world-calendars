@@ -88,10 +88,14 @@ export function getTodayHijri(): { year: number; month: number; day: number } | 
       month?: number;
       date?: number;
     };
-    const year = h.getFullYear?.() ?? h.year ?? 0;
+    const year = h.getFullYear?.() ?? h.year;
     const month = h.getMonth?.() ?? h.month ?? 1;
     const day = h.getDate?.() ?? h.date ?? 1;
-    return { year, month, day };
+    // Under the bundler's CJS interop this constructor yields an object with no
+    // usable year rather than throwing. Defaulting that to 0 produced a bogus
+    // "year 0" default, which put every real Hijri year outside the served range.
+    if (!Number.isFinite(year) || (year as number) <= 0) return null;
+    return { year: year as number, month, day };
   } catch {
     return null;
   }
@@ -100,16 +104,22 @@ export function getTodayHijri(): { year: number; month: number; day: number } | 
 /** Default year for calendar view when no ?year= param. Uses each calendar's native year. */
 export function getDefaultYearForCalendar(calendarId: string): number {
   const gregorianYear = new Date().getFullYear();
+  // The library-backed cases can yield NaN when the underlying package fails to
+  // load, and `??` does not catch NaN. A non-finite default would poison the
+  // served year range and 404 every month page for that calendar.
+  const finite = (value: number | undefined, fallback: number) =>
+    Number.isFinite(value) ? (value as number) : fallback;
+
   switch (calendarId) {
     case "islamic":
-      return getTodayHijri()?.year ?? gregorianYear - 579;
+      return finite(getTodayHijri()?.year, gregorianYear - 579);
     case "buddhist":
     case "thai-solar":
       return gregorianYear + 543;
     case "hindu":
       return gregorianYear + 57;
     case "hebrew":
-      return getTodayHebrew()?.year ?? gregorianYear + 3761;
+      return finite(getTodayHebrew()?.year, gregorianYear + 3761);
     case "ethiopian":
       return gregorianYear - 8;
     case "persian":
