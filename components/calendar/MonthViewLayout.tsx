@@ -2,7 +2,7 @@ import Link from "next/link";
 import { LayoutGrid, ChevronLeft, ChevronRight } from "lucide-react";
 import { CALENDAR_GRADIENTS, CALENDAR_GRADIENTS_DARK } from "@/lib/calendarThemes";
 import { CALENDAR_NAMES, CALENDAR_ICONS } from "@/lib/calendarMeta";
-import { MONTH_RANGES } from "@/lib/calendarViews";
+import { getYearRangeForCalendar, MONTH_RANGES } from "@/lib/calendarViews";
 import type { CalendarId } from "@/lib/types";
 import DarkModeToggle from "@/components/DarkModeToggle";
 import Footer from "@/components/Footer";
@@ -39,6 +39,15 @@ export default function MonthViewLayout({
   const prevYear = month === 1 ? year - 1 : year;
   const nextMonth = month === maxMonth ? 1 : month + 1;
   const nextYear = month === maxMonth ? year + 1 : year;
+
+  const { minYear, maxYear } = getYearRangeForCalendar(calendarId);
+  const canGoPrev = prevYear >= minYear;
+  const canGoNext = nextYear <= maxYear;
+
+  const navClass =
+    "flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-zinc-600 hover:bg-zinc-200 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-zinc-100";
+  const navDisabledClass =
+    "flex min-h-[44px] min-w-[44px] cursor-not-allowed items-center justify-center rounded-lg text-zinc-300 dark:text-zinc-600";
 
   return (
     <div className="min-h-screen">
@@ -100,23 +109,43 @@ export default function MonthViewLayout({
                 />
               )}
               <div className="flex items-center gap-0.5">
-                <Link
-                  href={`/calendar/${calendarId}/${prevYear}/${prevMonth}`}
-                  className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-zinc-600 hover:bg-zinc-200 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-zinc-100"
-                  aria-label={`Previous month (${prevMonth}/${prevYear})`}
-                >
-                  <ChevronLeft className="size-5" />
-                </Link>
+                {canGoPrev ? (
+                  <Link
+                    href={`/calendar/${calendarId}/${prevYear}/${prevMonth}`}
+                    className={navClass}
+                    aria-label={`Previous month (${prevMonth}/${prevYear})`}
+                  >
+                    <ChevronLeft className="size-5" />
+                  </Link>
+                ) : (
+                  <span
+                    className={navDisabledClass}
+                    aria-disabled="true"
+                    aria-label={`Earliest month available (${minYear})`}
+                  >
+                    <ChevronLeft className="size-5" />
+                  </span>
+                )}
                 <span className="min-w-[3rem] px-1 text-center text-sm font-semibold text-zinc-900 dark:text-zinc-100" aria-hidden>
                   {month}/{year}
                 </span>
-                <Link
-                  href={`/calendar/${calendarId}/${nextYear}/${nextMonth}`}
-                  className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-zinc-600 hover:bg-zinc-200 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-zinc-100"
-                  aria-label={`Next month (${nextMonth}/${nextYear})`}
-                >
-                  <ChevronRight className="size-5" />
-                </Link>
+                {canGoNext ? (
+                  <Link
+                    href={`/calendar/${calendarId}/${nextYear}/${nextMonth}`}
+                    className={navClass}
+                    aria-label={`Next month (${nextMonth}/${nextYear})`}
+                  >
+                    <ChevronRight className="size-5" />
+                  </Link>
+                ) : (
+                  <span
+                    className={navDisabledClass}
+                    aria-disabled="true"
+                    aria-label={`Latest month available (${maxYear})`}
+                  >
+                    <ChevronRight className="size-5" />
+                  </span>
+                )}
               </div>
               <DarkModeToggle />
             </nav>
