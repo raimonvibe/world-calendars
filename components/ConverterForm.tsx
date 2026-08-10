@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Calendar as CalendarIcon, ArrowRightLeft } from "lucide-react";
-import { parseISODate, formatDisplayDate } from "@/lib/dateUtils";
+import { parseISODate, formatDisplayDate, formatISODate } from "@/lib/dateUtils";
 import { convertToCalendar, CALENDAR_IDS } from "@/lib/converters";
 import { getCalendarInfo } from "@/lib/calendars";
 import { CALENDAR_NAMES } from "@/lib/calendarMeta";
@@ -12,8 +12,9 @@ import type { CalendarId } from "@/lib/types";
  * Date picker + target calendar dropdown → output converted date.
  */
 export default function ConverterForm() {
-  const todayISO = new Date().toISOString().slice(0, 10);
-  const [inputDate, setInputDate] = useState(todayISO);
+  // formatISODate reads local date parts; toISOString would give the UTC day,
+  // which is the wrong date for anyone whose local day differs from UTC's.
+  const [inputDate, setInputDate] = useState(() => formatISODate(new Date()));
   const [targetCalendar, setTargetCalendar] = useState<CalendarId>("hebrew");
   const [result, setResult] = useState<string | null>(null);
   const [resultOriginal, setResultOriginal] = useState<string | null>(null);
@@ -36,6 +37,9 @@ export default function ConverterForm() {
         <input
           id="date"
           type="date"
+          // The prerendered value is the build-time date; the client corrects it
+          // to the visitor's own today on hydration.
+          suppressHydrationWarning
           value={inputDate}
           onChange={(e) => setInputDate(e.target.value)}
           className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-zinc-900 shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500/20 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
