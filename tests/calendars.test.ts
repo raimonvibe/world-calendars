@@ -73,16 +73,13 @@ describe("calendars that are already correct", () => {
 });
 
 /**
- * Known-broken calendars, documented as executable spec.
- *
- * `it.fails` asserts the test currently fails. When phase 2 fixes the
- * implementation these will start passing, which makes `it.fails` itself fail —
- * that is the signal to promote them to plain `it`.
+ * Calendars moved onto ICU in phase 2. These were `it.fails` while the
+ * hand-rolled arithmetic was in place; they now assert the fixed behaviour.
  */
-describe("known broken — fixed in phase 2", () => {
+describe("calendars fixed in phase 2 (ICU-backed)", () => {
   const anchors = [day(2026, 8, 10), day(2026, 1, 15), day(2026, 9, 15), day(2026, 4, 5)];
 
-  it.fails("islamic returns a real Hijri year, not 0", () => {
+  it("islamic returns a real Hijri year, not 0", () => {
     for (const date of anchors) {
       const expected = icuParts("islamic-umalqura", date);
       const actual = getCalendarInfo("islamic", date).dateString;
@@ -90,7 +87,7 @@ describe("known broken — fixed in phase 2", () => {
     }
   });
 
-  it.fails("coptic day-of-month matches ICU", () => {
+  it("coptic day-of-month matches ICU", () => {
     for (const date of anchors) {
       const expected = icuParts("coptic", date);
       const actual = getCalendarInfo("coptic", date).dateString;
@@ -98,7 +95,7 @@ describe("known broken — fixed in phase 2", () => {
     }
   });
 
-  it.fails("ethiopian day-of-month matches ICU", () => {
+  it("ethiopian day-of-month matches ICU", () => {
     for (const date of anchors) {
       const expected = icuParts("ethiopic", date);
       const actual = getCalendarInfo("ethiopian", date).dateString;
@@ -106,17 +103,17 @@ describe("known broken — fixed in phase 2", () => {
     }
   });
 
-  it.fails("japanese era changes on the correct day, not 1 January", () => {
+  it("japanese era changes on the correct day, not 1 January", () => {
     // Reiwa began 1 May 2019; 30 April 2019 was still Heisei 31.
     expect(getCalendarInfo("japanese", day(2019, 4, 30)).dateString).toContain("Heisei");
   });
 
-  it.fails("japanese handles dates before the Shōwa era", () => {
+  it("japanese handles dates before the Shōwa era", () => {
     // 1 June 1920 was Taishō 9. The app extrapolates a negative Shōwa year.
     expect(getCalendarInfo("japanese", day(1920, 6, 1)).dateString).not.toMatch(/-\d/);
   });
 
-  it.fails("korean is distinct from chinese", () => {
+  it("korean is distinct from chinese", () => {
     const date = day(2026, 8, 10);
     expect(getCalendarInfo("korean", date).dateString).not.toBe(
       getCalendarInfo("chinese", date).dateString
@@ -136,7 +133,7 @@ describe("known broken — fixed in phase 2", () => {
     expect(getCalendarInfo("javanese", day(2026, 8, 10)).dateString).not.toContain("2026");
   });
 
-  it.fails("hindu new year does not fall on 1 January", () => {
+  it("hindu new year does not fall on 1 January", () => {
     // A Gregorian +57 offset makes the year roll over on 1 January, which no
     // Indian calendar does.
     const dec = getCalendarInfo("hindu", day(2025, 12, 31)).dateString;
@@ -158,6 +155,25 @@ describe("internal consistency", () => {
       const info = getCalendarInfo(id, day(2026, 8, 10));
       expect(info.dateString, id).toBeTruthy();
       expect(info.dateString, id).not.toBe("—");
+    }
+  });
+
+  /**
+   * A formatting-level guard rather than a calendar-level one. Requesting an
+   * era from ICU silently changed the Chinese month token from "6" to "Mo6",
+   * which parsed to NaN and rendered as "2026/NaN/28" while every
+   * calendar-level test still passed.
+   */
+  it("no calendar renders NaN, undefined or null on any day of the year", () => {
+    for (const date of dateSweep(2025, 2027, 5)) {
+      for (const id of CALENDAR_IDS) {
+        const info = getCalendarInfo(id, date);
+        for (const text of [info.dateString, info.dateOriginal ?? "", ...info.facts]) {
+          expect(text, `${id} on ${date.toDateString()}: ${text}`).not.toMatch(
+            /NaN|undefined|null/
+          );
+        }
+      }
     }
   });
 });

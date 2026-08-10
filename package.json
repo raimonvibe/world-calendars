@@ -15,8 +15,6 @@
   },
   "dependencies": {
     "@hebcal/core": "^6.0.8",
-    "chinese-lunar": "^0.1.4",
-    "hijri-date": "^0.2.2",
     "lucide-react": "^0.577.0",
     "luxon": "^3.7.2",
     "next": "16.1.6",

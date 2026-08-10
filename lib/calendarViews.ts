@@ -3,15 +3,15 @@
  * Used by calendar components (e.g. Islamic, Gregorian uses Luxon directly).
  */
 
-// @ts-expect-error - no types
-import HijriDate from "hijri-date";
 import { HDate } from "@hebcal/core";
 import { DateTime } from "luxon";
-
-const ISLAMIC_MONTH_NAMES = [
-  "Muharram", "Safar", "Rabi I", "Rabi II", "Jumada I", "Jumada II",
-  "Rajab", "Sha'ban", "Ramadan", "Shawwal", "Dhu al-Qi'dah", "Dhu al-Hijjah",
-];
+import {
+  ICU_CALENDARS,
+  getIcuYear,
+  getIcuPosition,
+  isLeapMonthToken,
+  icuMonthNumber,
+} from "./icu";
 
 const ISLAMIC_MONTH_NAMES_AR = [
   "مُحَرَّم", "صَفَر", "رَبِيع ٱلْأَوَّل", "رَبِيع ٱلثَّانِي", "جُمَادَىٰ ٱلْأُولَىٰ", "جُمَادَىٰ ٱلثَّانِيَة",
@@ -26,43 +26,28 @@ export type IslamicMonthStructure = {
   firstWeekday: number;
 };
 
+/**
+ * Month structure for any ICU-backed calendar. Month names, lengths and leap
+ * months all come from ICU, so this one function serves every such calendar.
+ */
+function icuStructure(
+  calendar: string,
+  year: number,
+  originalNames?: string[]
+): MonthStructure[] {
+  const icuYear = getIcuYear(calendar, year);
+  if (!icuYear) return [];
+
+  return icuYear.months.map((month, i) => ({
+    monthNameEn: month.nameEn,
+    monthNameOriginal: originalNames?.[i],
+    daysCount: month.daysCount,
+    firstWeekday: month.firstWeekday,
+  }));
+}
+
 export function getIslamicYearStructure(hijriYear: number): IslamicMonthStructure[] {
-  const result: IslamicMonthStructure[] = [];
-
-  for (let month = 1; month <= 12; month++) {
-    const h1 = new HijriDate(hijriYear, month, 1) as {
-      __proxy__?: Date;
-    };
-    const h2 =
-      month === 12
-        ? new HijriDate(hijriYear + 1, 1, 1) as { __proxy__?: Date }
-        : new HijriDate(hijriYear, month + 1, 1) as { __proxy__?: Date };
-
-    const p1 = h1.__proxy__;
-    const p2 = h2.__proxy__;
-
-    if (!p1 || !p2) {
-      result.push({
-        monthNameEn: ISLAMIC_MONTH_NAMES[month - 1] ?? "?",
-        monthNameOriginal: ISLAMIC_MONTH_NAMES_AR[month - 1],
-        daysCount: 30,
-        firstWeekday: 0,
-      });
-      continue;
-    }
-
-    const daysCount = Math.round((p2.getTime() - p1.getTime()) / (24 * 60 * 60 * 1000));
-    const firstWeekday = (p1.getDay() + 6) % 7;
-
-    result.push({
-      monthNameEn: ISLAMIC_MONTH_NAMES[month - 1] ?? "?",
-      monthNameOriginal: ISLAMIC_MONTH_NAMES_AR[month - 1],
-      daysCount,
-      firstWeekday,
-    });
-  }
-
-  return result;
+  return icuStructure(ICU_CALENDARS.islamic, hijriYear, ISLAMIC_MONTH_NAMES_AR);
 }
 
 /** Arabic-Indic numerals (٠١٢٣٤٥٦٧٨٩) for day display */
@@ -77,28 +62,15 @@ export function toPersianNumeral(n: number): string {
   return n < 10 ? fa[n] ?? String(n) : String(n).split("").map((d) => fa[+d] ?? d).join("");
 }
 
+/** Today's position in an ICU-backed calendar, for "today" highlighting. */
+function todayIn(calendar: string): { year: number; month: number; day: number } | null {
+  const position = getIcuPosition(calendar, new Date());
+  return position && { year: position.year, month: position.monthIndex, day: position.day };
+}
+
 /** Get today's Hijri date (year, month, day) for highlighting. */
 export function getTodayHijri(): { year: number; month: number; day: number } | null {
-  try {
-    const h = new HijriDate(new Date()) as {
-      getFullYear?: () => number;
-      getMonth?: () => number;
-      getDate?: () => number;
-      year?: number;
-      month?: number;
-      date?: number;
-    };
-    const year = h.getFullYear?.() ?? h.year;
-    const month = h.getMonth?.() ?? h.month ?? 1;
-    const day = h.getDate?.() ?? h.date ?? 1;
-    // Under the bundler's CJS interop this constructor yields an object with no
-    // usable year rather than throwing. Defaulting that to 0 produced a bogus
-    // "year 0" default, which put every real Hijri year outside the served range.
-    if (!Number.isFinite(year) || (year as number) <= 0) return null;
-    return { year: year as number, month, day };
-  } catch {
-    return null;
-  }
+  return todayIn(ICU_CALENDARS.islamic);
 }
 
 /** Default year for calendar view when no ?year= param. Uses each calendar's native year. */
@@ -111,30 +83,33 @@ export function getDefaultYearForCalendar(calendarId: string): number {
     Number.isFinite(value) ? (value as number) : fallback;
 
   switch (calendarId) {
+    // ICU-backed: read the year from the calendar itself rather than keeping a
+    // second, hand-maintained offset that can drift from the implementation.
     case "islamic":
-      return finite(getTodayHijri()?.year, gregorianYear - 579);
+      return finite(todayIn(ICU_CALENDARS.islamic)?.year, gregorianYear - 579);
+    case "ethiopian":
+      return finite(todayIn(ICU_CALENDARS.ethiopian)?.year, gregorianYear - 8);
+    case "coptic":
+      return finite(todayIn(ICU_CALENDARS.coptic)?.year, gregorianYear - 284);
+    case "hindu":
+      return finite(todayIn(ICU_CALENDARS.hindu)?.year, gregorianYear - 78);
+    case "chinese":
+      return finite(todayIn(ICU_CALENDARS.chinese)?.year, gregorianYear);
+    case "korean":
+      return finite(todayIn(ICU_CALENDARS.korean)?.year, gregorianYear);
+    case "hebrew":
+      return finite(getTodayHebrew()?.year, gregorianYear + 3761);
     case "buddhist":
     case "thai-solar":
       return gregorianYear + 543;
-    case "hindu":
-      return gregorianYear + 57;
-    case "hebrew":
-      return finite(getTodayHebrew()?.year, gregorianYear + 3761);
-    case "ethiopian":
-      return gregorianYear - 8;
     case "persian":
       return gregorianYear - 621;
-    case "coptic":
-      return gregorianYear - 284;
     case "armenian":
       return gregorianYear + 552;
     case "sikh":
       return gregorianYear - 1469;
     case "assyrian":
       return gregorianYear + 4750;
-    case "chinese":
-    case "korean":
-      return gregorianYear + 2698;
     case "javanese":
       return gregorianYear;
     case "mayan":
@@ -237,49 +212,50 @@ const ETHIOPIAN_MONTH_NAMES = [
 ];
 
 export function getEthiopianYearStructure(ethiopianYear: number): MonthStructure[] {
-  const result: MonthStructure[] = [];
-  const isLeap = (ethiopianYear % 4) === 3;
-  const msPerDay = 24 * 60 * 60 * 1000;
-  const sept11 = new Date(ethiopianYear + 8, 8, 11);
-  for (let month = 1; month <= 13; month++) {
-    const daysCount = month <= 12 ? 30 : isLeap ? 6 : 5;
-    const firstDay =
-      month <= 12
-        ? new Date(sept11.getTime() + (month - 1) * 30 * msPerDay)
-        : new Date(sept11.getTime() + 12 * 30 * msPerDay);
-    const firstWeekday = (firstDay.getDay() + 6) % 7;
-    result.push({
-      monthNameEn: ETHIOPIAN_MONTH_NAMES[month - 1] ?? "",
-      daysCount,
-      firstWeekday,
-    });
-  }
-  return result;
+  return icuStructure(ICU_CALENDARS.ethiopian, ethiopianYear);
 }
 
-// --- Chinese (simplified lunar: 12 months, 29/30 days) ---
-const CHINESE_MONTH_NAMES = [
-  "Zheng Yue", "Er Yue", "San Yue", "Si Yue", "Wu Yue", "Liu Yue",
-  "Qi Yue", "Ba Yue", "Jiu Yue", "Shi Yue", "Dong Yue", "La Yue",
-];
+export function getCopticYearStructure(copticYear: number): MonthStructure[] {
+  return icuStructure(ICU_CALENDARS.coptic, copticYear);
+}
+
+export function getIndianYearStructure(sakaYear: number): MonthStructure[] {
+  return icuStructure(ICU_CALENDARS.hindu, sakaYear);
+}
+
+// --- Chinese / Korean (lunisolar, 12 or 13 months with a leap month) ---
 const CHINESE_MONTH_NAMES_ZH = [
   "正月", "二月", "三月", "四月", "五月", "六月",
   "七月", "八月", "九月", "十月", "冬月", "腊月",
 ];
 
+/**
+ * ICU names Chinese months "First Month".."Twelfth Month" and marks a leap
+ * month with a "bis" token, so the Chinese-script label has to be derived from
+ * the month's position rather than looked up by index.
+ */
+function chineseStructure(calendar: string, lunarYear: number): MonthStructure[] {
+  const icuYear = getIcuYear(calendar, lunarYear);
+  if (!icuYear) return [];
+
+  return icuYear.months.map((month) => {
+    const isLeap = isLeapMonthToken(month.token);
+    const number = icuMonthNumber(month.token);
+    return {
+      monthNameEn: isLeap ? `Leap ${month.nameEn}` : month.nameEn,
+      monthNameOriginal: `${isLeap ? "闰" : ""}${CHINESE_MONTH_NAMES_ZH[number - 1] ?? `${number}月`}`,
+      daysCount: month.daysCount,
+      firstWeekday: month.firstWeekday,
+    };
+  });
+}
+
 export function getChineseYearStructure(lunarYear: number): MonthStructure[] {
-  const result: MonthStructure[] = [];
-  for (let month = 1; month <= 12; month++) {
-    const daysCount = month % 2 === 1 ? 30 : 29;
-    const firstWeekday = (lunarYear * 12 + month + 3) % 7;
-    result.push({
-      monthNameEn: CHINESE_MONTH_NAMES[month - 1] ?? "",
-      monthNameOriginal: CHINESE_MONTH_NAMES_ZH[month - 1],
-      daysCount,
-      firstWeekday,
-    });
-  }
-  return result;
+  return chineseStructure(ICU_CALENDARS.chinese, lunarYear);
+}
+
+export function getKoreanYearStructure(lunarYear: number): MonthStructure[] {
+  return chineseStructure(ICU_CALENDARS.korean, lunarYear);
 }
 
 // --- Month view: single month structure for any calendar ---
@@ -291,12 +267,17 @@ export type MonthInfo = {
   firstWeekday: number;
 };
 
-/** Max month number (1-based) per calendar. */
+/**
+ * Max month number (1-based) per calendar. This is the ceiling, not the count:
+ * a Hebrew common year has 12 months and a Chinese common year has 12, so
+ * getMonthInfo returns null for the absent 13th and the route redirects.
+ */
 export const MONTH_RANGES: Record<string, number> = {
-  gregorian: 12, islamic: 12, chinese: 12, hindu: 12, persian: 12,
-  japanese: 12, buddhist: 12, coptic: 12, "thai-solar": 12, korean: 12,
-  javanese: 12, armenian: 12, sikh: 12, assyrian: 12,
-  hebrew: 13, ethiopian: 13,
+  gregorian: 12, persian: 12, japanese: 12, buddhist: 12, "thai-solar": 12,
+  javanese: 12, armenian: 12, sikh: 12, assyrian: 12, hindu: 12,
+  islamic: 12,
+  // Lunisolar and 13-month calendars.
+  hebrew: 13, ethiopian: 13, coptic: 13, chinese: 13, korean: 13,
   bahai: 19,
 };
 
@@ -361,9 +342,23 @@ export function getMonthInfo(
       const m = structure[month - 1];
       return m ? { monthNameEn: m.monthNameEn, daysCount: m.daysCount, firstWeekday: m.firstWeekday } : null;
     }
-    case "chinese":
-    case "korean": {
+    case "coptic": {
+      const structure = getCopticYearStructure(year);
+      const m = structure[month - 1];
+      return m ? { monthNameEn: m.monthNameEn, daysCount: m.daysCount, firstWeekday: m.firstWeekday } : null;
+    }
+    case "hindu": {
+      const structure = getIndianYearStructure(year);
+      const m = structure[month - 1];
+      return m ? { monthNameEn: m.monthNameEn, daysCount: m.daysCount, firstWeekday: m.firstWeekday } : null;
+    }
+    case "chinese": {
       const structure = getChineseYearStructure(year);
+      const m = structure[month - 1];
+      return m ? { monthNameEn: m.monthNameEn, monthNameOriginal: m.monthNameOriginal, daysCount: m.daysCount, firstWeekday: m.firstWeekday } : null;
+    }
+    case "korean": {
+      const structure = getKoreanYearStructure(year);
       const m = structure[month - 1];
       return m ? { monthNameEn: m.monthNameEn, monthNameOriginal: m.monthNameOriginal, daysCount: m.daysCount, firstWeekday: m.firstWeekday } : null;
     }
@@ -376,13 +371,13 @@ export function getMonthInfo(
       };
     }
     default: {
+      // Still approximate: these calendars render Gregorian month lengths under
+      // their own year numbering. Phase 3 replaces them with real algorithms.
       let gYear = year;
       if (calendarId === "buddhist" || calendarId === "thai-solar") gYear = year - 543;
-      else if (calendarId === "hindu") gYear = year - 57;
       else if (calendarId === "sikh") gYear = year + 1469;
       else if (calendarId === "assyrian") gYear = year - 4750;
       else if (calendarId === "armenian") gYear = year - 552;
-      else if (calendarId === "coptic") gYear = year + 284;
       const start = DateTime.local(gYear, month, 1);
       const names: Record<string, string[]> = {
         buddhist: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],

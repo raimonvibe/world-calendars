@@ -110,27 +110,6 @@ export function icuMonthStructure(
   return { month, daysCount, firstWeekday: (first.getDay() + 6) % 7 };
 }
 
-/** Every distinct month length in the calendar year containing `date`. */
-export function icuYearMonthLengths(icuCalendar: string, date: Date): number[] {
-  const lengths: number[] = [];
-  const seen = new Set<string>();
-  let cursor = new Date(date);
-  // Walk back roughly a year, then forward collecting each distinct month.
-  cursor = new Date(cursor.getTime() - 200 * 86400000);
-  cursor.setHours(12, 0, 0, 0);
-  for (let i = 0; i < 400; i++) {
-    const structure = icuMonthStructure(icuCalendar, cursor);
-    if (!seen.has(structure.month)) {
-      seen.add(structure.month);
-      lengths.push(structure.daysCount);
-    }
-    cursor = new Date(cursor.getTime() + 25 * 86400000);
-    cursor.setHours(12, 0, 0, 0);
-    if (seen.size >= 14) break;
-  }
-  return lengths;
-}
-
 /** Julian Day Number for a Gregorian date, used by the Mayan Long Count. */
 export function julianDayNumber(date: Date): number {
   return Math.floor(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86400000) + 2440588;

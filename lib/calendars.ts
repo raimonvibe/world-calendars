@@ -1,15 +1,21 @@
 /**
  * Calendar display logic: get "today" in each calendar system + 1–2 fun facts.
- * Uses Luxon, hijri-date, chinese-lunar, @hebcal/core. Rest are approximate or stubbed.
+ *
+ * Islamic, Coptic, Ethiopian, Chinese, Korean, Japanese and Indian dates come
+ * from ICU via lib/icu. Hebrew uses @hebcal/core and Persian uses Luxon, both
+ * of which are already correct. The remainder are still approximate - see
+ * docs/CALENDAR_ACCURACY.md for exactly which and why.
  */
 
 import { DateTime } from "luxon";
-// hijri-date is CJS; default import
-// @ts-expect-error - no types
-import HijriDate from "hijri-date";
-// @ts-expect-error - no types
-import chineseLunar from "chinese-lunar";
 import { HDate } from "@hebcal/core";
+import {
+  ICU_CALENDARS,
+  readIcuDate,
+  readIcuMonthName,
+  isLeapMonthToken,
+  icuMonthNumber,
+} from "./icu";
 
 export type CalendarInfo = {
   id: string;
@@ -35,85 +41,85 @@ export function getGregorian(d: Date): CalendarInfo {
   };
 }
 
-/** Islamic (Hijri): hijri-date — English + optional Arabic-style display */
+/** Arabic month name for the Hijri month containing `d`. */
+function arabicHijriMonth(d: Date): string {
+  return (
+    new Intl.DateTimeFormat(`ar-u-ca-${ICU_CALENDARS.islamic}`, { month: "long" })
+      .formatToParts(d)
+      .find((p) => p.type === "month")?.value ?? ""
+  );
+}
+
+/** Islamic (Hijri): Umm al-Qura via ICU — English + Arabic display */
 export function getHijri(d: Date): CalendarInfo {
-  try {
-    const h = new HijriDate(d) as { year?: number; month?: number; date?: number; getFullYear?: () => number; getMonth?: () => number; getDate?: () => number };
-    const year = h.getFullYear?.() ?? h.year ?? 0;
-    const month = h.getMonth?.() ?? h.month ?? 1;
-    const day = h.getDate?.() ?? h.date ?? 1;
-    const monthNames = [
-      "Muharram", "Safar", "Rabi I", "Rabi II", "Jumada I", "Jumada II",
-      "Rajab", "Sha'ban", "Ramadan", "Shawwal", "Dhu al-Qi'dah", "Dhu al-Hijjah",
-    ];
-    const monthName = monthNames[month - 1] ?? "?";
-    const dateString = `${monthName} ${day}, ${year} AH`;
-    return {
-      id: "islamic",
-      name: "Islamic (Hijri)",
-      dateString,
-      dateOriginal: `${day} ${monthName} ${year} هـ`,
-      facts: [
-        "Lunar calendar; months follow the moon.",
-        "Epoch is the Hijra (622 CE).",
-      ],
-    };
-  } catch {
-    return {
-      id: "islamic",
-      name: "Islamic (Hijri)",
-      dateString: "—",
-      facts: ["Lunar calendar; epoch is the Hijra (622 CE)."],
-    };
-  }
-}
+  const { year, day } = readIcuDate(ICU_CALENDARS.islamic, d);
+  const monthName = readIcuMonthName(ICU_CALENDARS.islamic, d);
 
-/** Chinese (Lunar): chinese-lunar — Chinese script + English */
-export function getChinese(d: Date): CalendarInfo {
-  try {
-    const lunar = chineseLunar.solarToLunar(d);
-    if (!lunar) return fallbackChinese(d);
-    const animal = (chineseLunar as { animalName?: (y: number) => string }).animalName?.(lunar.year) ?? "";
-    const format = (chineseLunar as { format?: (l: unknown, f: string) => string }).format;
-    const dateOriginal = format?.(lunar, "Y年m月d日") ?? `${lunar.year}年${lunar.month}月${lunar.day}日`;
-    const dateString = `${lunar.year}/${lunar.month}/${lunar.day} (${animal || "Lunar"})`;
-    return {
-      id: "chinese",
-      name: "Chinese (Lunar)",
-      dateString,
-      dateOriginal,
-      facts: [
-        animal ? `Year of the ${animal}` : "Lunar calendar with 12–13 months.",
-        "Used for traditional festivals (e.g. Lunar New Year).",
-      ],
-    };
-  } catch {
-    return fallbackChinese(d);
-  }
-}
-
-function fallbackChinese(d: Date): CalendarInfo {
   return {
-    id: "chinese",
-    name: "Chinese (Lunar)",
-    dateString: "—",
-    facts: ["Lunar calendar; each year has an animal zodiac.", "Used for traditional festivals."],
+    id: "islamic",
+    name: "Islamic (Hijri)",
+    dateString: `${monthName} ${day}, ${year} AH`,
+    dateOriginal: `${day} ${arabicHijriMonth(d)} ${year} هـ`,
+    facts: [
+      "Lunar calendar; months follow the moon.",
+      "Epoch is the Hijra (622 CE).",
+    ],
   };
 }
 
-/** Hindu (Vikram Samvat): approximate — epoch 57 BCE → Gregorian year + 57 */
+const ZODIAC_ANIMALS = [
+  "Rat", "Ox", "Tiger", "Rabbit", "Dragon", "Snake",
+  "Horse", "Goat", "Monkey", "Rooster", "Dog", "Pig",
+] as const;
+
+/**
+ * Zodiac animal for a Chinese year. Keyed off the year ICU relates the lunar
+ * year to, so the animal changes at Lunar New Year rather than 1 January.
+ */
+function zodiacAnimal(relatedYear: number): string {
+  return ZODIAC_ANIMALS[((relatedYear - 4) % 12 + 12) % 12];
+}
+
+/** Chinese (Lunar): ICU — leap months and real month lengths included */
+export function getChinese(d: Date): CalendarInfo {
+  const { year, monthToken, day } = readIcuDate(ICU_CALENDARS.chinese, d);
+  const monthName = readIcuMonthName(ICU_CALENDARS.chinese, d);
+  const animal = zodiacAnimal(year);
+  // ICU marks a leap month as e.g. "6bis"; show it the way Chinese calendars do.
+  const isLeapMonth = isLeapMonthToken(monthToken);
+  const monthNumber = icuMonthNumber(monthToken);
+
+  return {
+    id: "chinese",
+    name: "Chinese (Lunar)",
+    dateString: `${year}/${isLeapMonth ? "leap " : ""}${monthNumber}/${day} (${animal})`,
+    dateOriginal: `${year}年${isLeapMonth ? "闰" : ""}${monthNumber}月${day}日`,
+    facts: [
+      `Year of the ${animal}${isLeapMonth ? ` — currently in a leap ${monthName.toLowerCase()}` : ""}.`,
+      "Used for traditional festivals (e.g. Lunar New Year).",
+    ],
+  };
+}
+
+/**
+ * Indian National (Saka) calendar via ICU.
+ *
+ * This was previously labelled Vikram Samvat but implemented as Gregorian + 57,
+ * which is not Vikram Samvat: that calendar is lunisolar and needs an ephemeris.
+ * Saka is India's official civil calendar, is well defined, and ICU implements
+ * it, so the label now matches what is actually computed.
+ */
 export function getHindu(d: Date): CalendarInfo {
-  const y = d.getFullYear();
-  const m = d.getMonth() + 1;
-  const day = d.getDate();
-  const vsYear = y + 57;
+  const { year, day } = readIcuDate(ICU_CALENDARS.hindu, d);
+  const monthName = readIcuMonthName(ICU_CALENDARS.hindu, d);
+
   return {
     id: "hindu",
-    name: "Hindu (Vikram Samvat)",
-    dateString: `${day} / ${m} / ${vsYear} VS`,
+    name: "Indian National (Saka)",
+    dateString: `${monthName} ${day}, ${year} Saka`,
     facts: [
-      "Vikram Samvat starts in 57 BCE (Gregorian).",
-      "Widely used in North India and Nepal.",
+      "India's official civil calendar, adopted in 1957.",
+      "Year 1 of the Saka era is 78 CE; the year begins at Chaitra.",
     ],
   };
 }
@@ -137,20 +143,18 @@ export function getHebrew(d: Date): CalendarInfo {
   };
 }
 
-/** Ethiopian: approximate (≈ 7–8 years behind, New Year in September) */
+/** Ethiopian: ICU — 12 months of 30 days plus the short 13th (Pagume) */
 export function getEthiopian(d: Date): CalendarInfo {
-  const y = d.getFullYear();
-  const m = d.getMonth();
-  const day = d.getDate();
-  const ethYear = y - 8 + (m < 8 ? 0 : 1);
-  const ethMonth = m < 8 ? m + 5 : m - 7;
+  const { year, day } = readIcuDate(ICU_CALENDARS.ethiopian, d);
+  const monthName = readIcuMonthName(ICU_CALENDARS.ethiopian, d);
+
   return {
     id: "ethiopian",
     name: "Ethiopian",
-    dateString: `${day} / ${ethMonth} / ${ethYear} EE`,
+    dateString: `${monthName} ${day}, ${year} EE`,
     facts: [
-      "Roughly 7–8 years behind Gregorian.",
-      "New Year (Enkutatash) in September.",
+      "Twelve 30-day months plus Pagume, a 5- or 6-day thirteenth month.",
+      "New Year (Enkutatash) falls in September.",
     ],
   };
 }
@@ -173,12 +177,20 @@ export function getPersian(d: Date): CalendarInfo {
   };
 }
 
-/** Japanese: Gregorian + era (Reiwa since 2019) */
+/**
+ * Japanese: ICU supplies the era. Era changes happen mid-year (Reiwa began on
+ * 1 May 2019, Heisei on 8 January 1989), so deriving the era from the Gregorian
+ * year alone mislabels every date between 1 January and the accession.
+ */
 export function getJapanese(d: Date): CalendarInfo {
   const dt = DateTime.fromJSDate(d);
-  const y = d.getFullYear();
-  const era = y >= 2019 ? "Reiwa" : y >= 1989 ? "Heisei" : "Shōwa";
-  const eraYear = y >= 2019 ? y - 2018 : y >= 1989 ? y - 1988 : y - 1925;
+  const parts = new Intl.DateTimeFormat(`en-u-ca-${ICU_CALENDARS.japanese}`, {
+    era: "long",
+    year: "numeric",
+  }).formatToParts(d);
+  const era = parts.find((p) => p.type === "era")?.value ?? "";
+  const eraYear = parts.find((p) => p.type === "year")?.value ?? "";
+
   return {
     id: "japanese",
     name: "Japanese",
@@ -205,16 +217,15 @@ export function getBuddhist(d: Date): CalendarInfo {
   };
 }
 
-/** Coptic: approximate (similar to Ethiopian, different epoch) */
+/** Coptic: ICU — same 13-month structure as Ethiopian, different epoch */
 export function getCoptic(d: Date): CalendarInfo {
-  const y = d.getFullYear();
-  const m = d.getMonth() + 1;
-  const day = d.getDate();
-  const copticYear = y - 284;
+  const { year, day } = readIcuDate(ICU_CALENDARS.coptic, d);
+  const monthName = readIcuMonthName(ICU_CALENDARS.coptic, d);
+
   return {
     id: "coptic",
     name: "Coptic",
-    dateString: `${day} / ${m} / ${copticYear} AM`,
+    dateString: `${monthName} ${day}, ${year} AM`,
     facts: [
       "Used by the Coptic Church (Egypt).",
       "Epoch: Era of Martyrs (284 CE).",
@@ -236,16 +247,25 @@ export function getThaiSolar(d: Date): CalendarInfo {
   };
 }
 
-/** Korean: often same as Chinese lunar; display similarly */
+/**
+ * Korean (Dangi): the same lunisolar reckoning as the Chinese calendar, but
+ * numbered in the Dangi era (Gregorian + 2333), which is what makes it a
+ * distinct calendar rather than a relabelled copy.
+ */
 export function getKorean(d: Date): CalendarInfo {
-  const info = getChinese(d);
+  const { year, monthToken, day } = readIcuDate(ICU_CALENDARS.korean, d);
+  const dangiYear = year + 2333;
+  const isLeapMonth = isLeapMonthToken(monthToken);
+  const monthNumber = icuMonthNumber(monthToken);
+
   return {
     id: "korean",
-    name: "Korean (Lunar-Solar)",
-    dateString: info.dateString,
+    name: "Korean (Dangi)",
+    dateString: `${dangiYear}/${isLeapMonth ? "leap " : ""}${monthNumber}/${day} Dangi`,
+    dateOriginal: `단기 ${dangiYear}년 ${isLeapMonth ? "윤" : ""}${monthNumber}월 ${day}일`,
     facts: [
-      "Traditional Korean calendar follows Chinese lunisolar system.",
-      "Korean New Year (Seollal) on Lunar New Year.",
+      "Dangi era counts from the legendary founding of Gojoseon in 2333 BCE.",
+      "Korean New Year (Seollal) falls on Lunar New Year.",
     ],
   };
 }

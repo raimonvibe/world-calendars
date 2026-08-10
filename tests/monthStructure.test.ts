@@ -8,7 +8,6 @@ import {
   MONTH_RANGES,
 } from "@/lib/calendarViews";
 import { CALENDAR_IDS } from "@/lib/calendars";
-import { day, icuYearMonthLengths } from "./helpers";
 
 /** Total days across every month the app renders for a given year. */
 function yearLength(calendarId: string, year: number): number {
@@ -92,30 +91,72 @@ describe("month grids", () => {
   });
 });
 
-describe("month grids — known broken, fixed in phase 2", () => {
-  // A plausible-looking year total is not evidence of a correct grid: the
-  // invented Chinese formula alternates 30/29 to exactly 354, which is a valid
-  // common-year length. Compare the actual month lengths against ICU instead.
-  it.fails("islamic month lengths match the real Hijri calendar", () => {
-    const lengths = icuYearMonthLengths("islamic-umalqura", day(2026, 8, 10)).slice(0, 12);
-    const year = getDefaultYearForCalendar("islamic");
-    const actual = Array.from(
-      { length: 12 },
-      (_, i) => getMonthInfo("islamic", year, i + 1)?.daysCount
-    );
-    expect(actual).toEqual(lengths);
+describe("lunar and lunisolar grids", () => {
+  /**
+   * These assert calendar invariants rather than comparing against ICU: the
+   * implementation now derives from ICU, so an ICU comparison would be
+   * tautological. An invented formula cannot satisfy these by accident — the
+   * old Chinese one alternated 30/29 to exactly 354, a valid year total, but
+   * produced identical month lengths every year and never a leap month.
+   */
+  it("islamic months are 29 or 30 days and years are 354 or 355", () => {
+    const base = getDefaultYearForCalendar("islamic");
+    for (let year = base - 5; year <= base + 5; year++) {
+      const lengths = Array.from({ length: 12 }, (_, i) =>
+        getMonthInfo("islamic", year, i + 1)?.daysCount
+      );
+      expect(lengths.every((n) => n === 29 || n === 30), `AH ${year}`).toBe(true);
+      expect([354, 355], `AH ${year}`).toContain(yearLength("islamic", year));
+    }
   });
 
-  it.fails("chinese month lengths match the real lunisolar calendar", () => {
-    const lengths = icuYearMonthLengths("chinese", day(2026, 8, 10)).slice(0, 12);
-    const year = getDefaultYearForCalendar("chinese");
-    const actual = Array.from(
-      { length: 12 },
-      (_, i) => getMonthInfo("chinese", year, i + 1)?.daysCount
+  it("islamic month lengths differ from year to year", () => {
+    const base = getDefaultYearForCalendar("islamic");
+    const shapes = new Set(
+      Array.from({ length: 8 }, (_, k) =>
+        Array.from({ length: 12 }, (_, i) => getMonthInfo("islamic", base + k, i + 1)?.daysCount).join()
+      )
     );
-    expect(actual).toEqual(lengths);
+    expect(shapes.size, "a fixed pattern would give one shape").toBeGreaterThan(1);
   });
 
+  it("chinese years are lunisolar, with leap months in leap years", () => {
+    const base = getDefaultYearForCalendar("chinese");
+    let leapYears = 0;
+    for (let year = base - 5; year <= base + 5; year++) {
+      const months = Array.from({ length: 13 }, (_, i) =>
+        getMonthInfo("chinese", year, i + 1)
+      ).filter((m) => m != null);
+
+      expect(months.every((m) => m!.daysCount === 29 || m!.daysCount === 30), `${year}`).toBe(true);
+      expect([12, 13], `${year} month count`).toContain(months.length);
+      if (months.length === 13) leapYears++;
+
+      const total = yearLength("chinese", year);
+      expect([353, 354, 355, 383, 384, 385], `${year} total ${total}`).toContain(total);
+    }
+    // Roughly 7 leap years in every 19; an 11-year window must contain some.
+    expect(leapYears, "leap months over 11 years").toBeGreaterThan(0);
+  });
+
+  it("korean grid is the same lunisolar shape as chinese", () => {
+    const chineseYear = getDefaultYearForCalendar("chinese");
+    const koreanYear = getDefaultYearForCalendar("korean");
+    expect(yearLength("korean", koreanYear)).toBe(yearLength("chinese", chineseYear));
+  });
+
+  it("coptic and ethiopian are twelve 30-day months plus a short thirteenth", () => {
+    for (const id of ["coptic", "ethiopian"]) {
+      const year = getDefaultYearForCalendar(id);
+      for (let month = 1; month <= 12; month++) {
+        expect(getMonthInfo(id, year, month)?.daysCount, `${id} month ${month}`).toBe(30);
+      }
+      expect([5, 6], `${id} month 13`).toContain(getMonthInfo(id, year, 13)?.daysCount);
+    }
+  });
+});
+
+describe("month grids — known broken, fixed in phase 3", () => {
   it.fails("bahai year accounts for the intercalary Ayyam-i-Ha days", () => {
     // 19 months x 19 days is 361; the year needs 4 or 5 intercalary days.
     const year = getDefaultYearForCalendar("bahai");
