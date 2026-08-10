@@ -7,6 +7,16 @@ import DarkModeToggle from "@/components/DarkModeToggle";
 import Footer from "@/components/Footer";
 
 /**
+ * Without this the page is prerendered once at build time and `today()` is
+ * frozen at the moment of deployment - the date the site advertises would be
+ * whenever it last shipped. Revalidating keeps it edge-cached (so it does not
+ * spend an edge request per visit) while never being more than a few minutes
+ * stale. The date is the server's, so visitors far from UTC can see the
+ * previous or next day for part of their own day.
+ */
+export const revalidate = 300;
+
+/**
  * Homepage: responsive grid of 18 calendar cards.
  * Uses real-time date (new Date()) via today().
  */
