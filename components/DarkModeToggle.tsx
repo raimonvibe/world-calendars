@@ -1,17 +1,19 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { Sun, Moon } from "lucide-react";
+
+const noopSubscribe = () => () => {};
 
 /**
  * Toggle between light and dark mode using next-themes.
  */
 export default function DarkModeToggle() {
   const { setTheme, resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
+  // false while server-rendering, true once hydrated - without the cascading
+  // render that a setState-in-effect would cause.
+  const mounted = useSyncExternalStore(noopSubscribe, () => true, () => false);
 
   if (!mounted) {
     return (

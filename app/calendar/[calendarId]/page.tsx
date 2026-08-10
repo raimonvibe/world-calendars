@@ -1,3 +1,4 @@
+import { createElement } from "react";
 import { redirect } from "next/navigation";
 import { CALENDAR_IDS } from "@/lib/calendars";
 import { clampYearToRange, getDefaultYearForCalendar } from "@/lib/calendarViews";
@@ -28,11 +29,12 @@ export default async function CalendarPage({ params, searchParams }: PageProps) 
   // still guaranteeing the rendered prev/next links stay inside the window.
   const safeYear = clampYearToRange(calendarId, year);
 
-  const CalendarComponent = getCalendarComponent(calendarId);
-
+  // createElement rather than JSX: the components are module-level constants
+  // looked up from a static map, but assigning one to a local and rendering it
+  // as <CalendarComponent /> reads as creating a component during render.
   return (
     <CalendarLayout calendarId={calendarId} year={safeYear}>
-      <CalendarComponent year={safeYear} />
+      {createElement(getCalendarComponent(calendarId), { year: safeYear })}
     </CalendarLayout>
   );
 }

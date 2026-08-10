@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      # The calendar tests assert against ICU, so the runner needs full ICU
+      # data. Node 22 ships it by default; this guards against a slim runtime
+      # silently reducing the suite to English-only formatting.
+      - name: Check ICU availability
+        run: node -e "const s=new Intl.DateTimeFormat('en-u-ca-hebrew').resolvedOptions().calendar; if(s!=='hebrew') throw new Error('Full ICU missing, got: '+s)"
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
