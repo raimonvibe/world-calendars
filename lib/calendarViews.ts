@@ -290,6 +290,29 @@ export const MONTH_RANGES: Record<string, number> = {
   bahai: 19,
 };
 
+/**
+ * How many years either side of a calendar's current year we serve pages for.
+ * Outside this window the routes 404 and the prev/next controls are disabled,
+ * so crawlers can't walk the month/year links forever.
+ */
+export const YEAR_SPAN = 100;
+
+export function getYearRangeForCalendar(calendarId: string): { minYear: number; maxYear: number } {
+  const current = getDefaultYearForCalendar(calendarId);
+  return { minYear: current - YEAR_SPAN, maxYear: current + YEAR_SPAN };
+}
+
+export function isYearInRange(calendarId: string, year: number): boolean {
+  const { minYear, maxYear } = getYearRangeForCalendar(calendarId);
+  return Number.isInteger(year) && year >= minYear && year <= maxYear;
+}
+
+export function clampYearToRange(calendarId: string, year: number): number {
+  const { minYear, maxYear } = getYearRangeForCalendar(calendarId);
+  if (!Number.isFinite(year)) return getDefaultYearForCalendar(calendarId);
+  return Math.min(Math.max(Math.trunc(year), minYear), maxYear);
+}
+
 export function getMonthInfo(
   calendarId: string,
   year: number,

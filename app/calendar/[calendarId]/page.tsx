@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { CALENDAR_IDS } from "@/lib/calendars";
-import { getDefaultYearForCalendar } from "@/lib/calendarViews";
+import { clampYearToRange, getDefaultYearForCalendar } from "@/lib/calendarViews";
 import type { CalendarId } from "@/lib/types";
 import CalendarLayout from "@/components/calendar/CalendarLayout";
 import { getCalendarComponent } from "@/components/calendar";
@@ -24,7 +24,9 @@ export default async function CalendarPage({ params, searchParams }: PageProps) 
 
   const defaultYear = getDefaultYearForCalendar(calendarId);
   const year = yearParam ? parseInt(yearParam, 10) : defaultYear;
-  const safeYear = Number.isFinite(year) ? year : defaultYear;
+  // Clamping rather than 404ing keeps hand-typed ?year= values usable, while
+  // still guaranteeing the rendered prev/next links stay inside the window.
+  const safeYear = clampYearToRange(calendarId, year);
 
   const CalendarComponent = getCalendarComponent(calendarId);
 

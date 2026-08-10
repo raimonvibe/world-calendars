@@ -1,6 +1,6 @@
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { CALENDAR_IDS } from "@/lib/calendars";
-import { getMonthInfo, getTodayDayInMonth, MONTH_RANGES } from "@/lib/calendarViews";
+import { getMonthInfo, getTodayDayInMonth, isYearInRange, MONTH_RANGES } from "@/lib/calendarViews";
 import type { CalendarId } from "@/lib/types";
 import MonthViewLayout from "@/components/calendar/MonthViewLayout";
 import MonthView from "@/components/calendar/MonthView";
@@ -24,6 +24,12 @@ export default async function MonthPage({ params }: PageProps) {
   const month = parseInt(monthParam, 10);
   if (!Number.isFinite(year) || !Number.isFinite(month)) {
     redirect(`/calendar/${calendarId}?year=${yearParam || new Date().getFullYear()}`);
+  }
+
+  // Outside the served window there is nothing meaningful to show, and answering
+  // 200 here lets crawlers walk the prev/next links into an unbounded URL space.
+  if (!isYearInRange(calendarId, year)) {
+    notFound();
   }
 
   const monthInfo = getMonthInfo(calendarId, year, month);
