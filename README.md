@@ -25,7 +25,7 @@ This calendar was made by me as a Christian, loving the world 🌍 and with the 
 - **📆 18 calendars** — Gregorian, Islamic (Hijri), Chinese (Lunar), Hindu (Vikram Samvat), Hebrew, Ethiopian, Persian (Solar Hijri), Japanese, Buddhist, Coptic, Thai Solar, Korean, Javanese, Armenian, Mayan, Baha’i, Sikh (Nanakshahi), Assyrian
 - **🗓️ Full year & month views** — Click any calendar to see the full year; click any month for a detailed month view with holidays
 - **🎉 Holidays & traditions** — Observances and descriptions in English (and original script where relevant) for each calendar
-- **🔄 Date converter** — Pick a date and convert it to any of the 18 calendar systems
+- **🔄 Date converter** — Pick a date and convert it to any of the 18 calendar systems ([accuracy notes](docs/CALENDAR_ACCURACY.md))
 - **🌙 Dark / light mode** — Toggle on every page
 - **📱 Responsive** — Layout and touch targets tuned for mobile, tablet, and desktop
 - **🎨 Per-calendar themes** — Each calendar has its own gradient and accent on the hub and in its views
@@ -90,6 +90,8 @@ This calendar was made by me as a Christian, loving the world 🌍 and with the 
 | `npm run build`| Build for production     |
 | `npm start`    | Run production build     |
 | `npm run lint` | Run ESLint               |
+| `npm test`     | Run the regression suite |
+| `npm run audit`| Check every calendar against independent implementations |
 
 ---
 

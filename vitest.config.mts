@@ -9,5 +9,8 @@ export default defineConfig({
   },
   test: {
     include: ["tests/**/*.test.ts"],
+    // The audit suite is an investigation, not a regression gate: it fails on
+    // purpose wherever a calendar is wrong. Run it with `npm run audit`.
+    exclude: ["tests/audit/**"],
   },
 });

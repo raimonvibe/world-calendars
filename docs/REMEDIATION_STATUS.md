@@ -6,8 +6,9 @@ open, and which decisions are already settled so they do not get relitigated.
 Companion doc: [CALENDAR_ACCURACY.md](./CALENDAR_ACCURACY.md) records which
 calendars are trustworthy and what each one actually computes.
 
-**Current state:** phases 0–2 are complete on branch
-`test/calendar-safety-net` (3 commits, not yet merged). Phases 3 and 5 are open.
+**Current state:** phases 0–3 are complete. Phase 5 is partly done — the
+Persian, view-layer and holiday defects it would have caught are fixed; the
+accessibility, performance and dependency items are still open.
 
 ---
 
@@ -75,32 +76,45 @@ by walking days and grouping them, memoised per calendar-year.
 
 Removed `hijri-date` and `chinese-lunar`, both last published in 2017.
 
+### Phase 3 — the six remaining calendars
+
+All six now compute from their own rules in `lib/traditionalCalendars.ts`, on
+the day-number arithmetic in `lib/calendarMath.ts`, with the equinox and sunset
+work the Persian and Baha'i calendars need in `lib/astronomy.ts`.
+
+| Calendar | Now |
+| --- | --- |
+| Mayan | Long Count from correlation 584283, plus Tzolkʼin and Haabʼ |
+| Armenian | 365-day wandering year, epoch 11 July 552 CE |
+| Assyrian | Syriac months, year beginning 1 April |
+| Sikh | Nanakshahi fixed solar months, year = Gregorian − 1468 |
+| Baha'i | Badíʻ, with the published Naw-Rúz table pinning 2015–2029 |
+| Javanese | Anno Javanico on the Asapon kurup, plus the pasaran |
+
+The Armenian contradiction is resolved by deriving `getDefaultYearForCalendar`
+from the implementation rather than keeping a second offset beside it.
+
+### The audit suite
+
+`tests/audit/` (`npm run audit`) checks the app against implementations that
+share no code with `lib/` and never call ICU — RD arithmetic from *Calendrical
+Calculations*, astronomy from Meeus, and externally known dates. It found what
+the ICU-based tests structurally could not:
+
+- the Persian year view was entirely Gregorian, though its date string was right
+- the year-view components never called `getMonthInfo`, so Coptic and Hindu year
+  views were wrong too
+- `MONTH_RANGES` had no `mayan` entry, so every Mayan month page 404'd
+- `getTodayDayInMonth` still used the Vikram Samvat `+ 57` offset for Hindu
+- holidays landed on the wrong days, because the definitions were written in
+  each calendar's own numbering
+
+See [CALENDAR_ACCURACY.md](./CALENDAR_ACCURACY.md) for the full result and the
+remaining known limits.
+
 ---
 
 ## Open
-
-### Phase 3 — the six remaining calendars
-
-All deterministic, all implementable without new dependencies. Each renders
-Gregorian month lengths under a different year number today, so only the year is
-ever close and the day is essentially always wrong. 5 `it.fails` tests hold
-these specs.
-
-| Calendar | Approach |
-| --- | --- |
-| **Mayan** | Long Count = JDN − 584283 (GMT correlation). Algorithm already validated during the audit. Optionally add Tzolk'in/Haab' |
-| **Armenian** | Traditional wandering year: 365 days, no leap, epoch 11 July 552 CE (JDN 1922868) |
-| **Assyrian** | Gregorian + 4750, year starts 1 April |
-| **Sikh** | Nanakshahi fixed solar month lengths, year starts 14 March, epoch 1469 |
-| **Baha'i** | Badí': 19 months × 19 days + Ayyám-i-Há. Astronomical since 2015, so needs the official Naw-Rúz table (published through 2064) |
-| **Javanese** | Anno Javanico + 5-day pasaran + 210-day pawukon |
-
-**Armenian is additionally self-contradictory** and should be fixed regardless
-of the rest: the date string uses `year - 552` (1474) while the year navigation
-uses `year + 552` (2578). The same day is labelled two different years depending
-where you look. This exists because the offset is duplicated in two places —
-`getDefaultYearForCalendar` should be derived from the implementation, not
-hand-maintained alongside it.
 
 ### Phase 5 — quality sweep
 
@@ -128,21 +142,20 @@ hand-maintained alongside it.
 - `npm audit`: 3 high-severity CVEs in `libvips` via `sharp`, transitive from
   Next. Fix requires upgrading to `next@16.3.0`
 
-**Honesty**
-
-- README claims conversion "to any of the 18 calendar systems". Six are still
-  approximations — link `CALENDAR_ACCURACY.md` rather than implying all 18 are
-  exact
-
 **Low priority**
 
 - URL segments interpolated into `redirect()` targets without encoding
-- Dead `getWeekday()` in `lib/holidays/gregorian.ts`
+- Dead `getWeekday()` in `lib/holidays/gregorian.ts`, and the unused
+  `ETHIOPIAN_MONTH_NAMES` in `lib/calendarViews.ts`
 - Next boilerplate `file.svg` / `window.svg` / `next.svg` / `vercel.svg` still
   in `public/`
 - The Gregorian holiday set is ~14 Christian/US entries for a "world" calendar hub
 - Month picker offers a 13th month for Hebrew common years; the route redirects,
   so it is cosmetic
+- Some holiday entries are Gregorian civil dates stored as fixed dates in
+  wandering or lunar calendars, so they drift. The Armenian entries look garbled
+  (Armenian Christmas is recorded as month 6 day 6). Needs a rule kind that
+  anchors to a Gregorian date
 
 ---
 
@@ -170,12 +183,14 @@ Do not relitigate without a reason.
 ## Verifying
 
 ```
-npm run lint && npm run typecheck && npm test && npm run build
+npm run lint && npm run typecheck && npm test && npm run audit && npm run build
 ```
 
 Tests assert against ICU via `Intl`, so the runtime needs full ICU data. CI
 checks this explicitly — a slim build would silently reduce the suite to
 English-only formatting and pass anyway.
 
-A passing suite that reports **expected fail** counts is normal: those are the
-Phase 3 calendars whose specs are written but not yet implemented.
+`npm test` should report no expected failures. `npm run audit` reports **4
+expected fails**: the two Lunar New Years where ICU's lunar model puts the new
+moon on the wrong side of midnight. If those start passing, ICU has improved and
+they should be promoted to plain `it`.
