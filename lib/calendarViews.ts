@@ -12,6 +12,79 @@ import {
   isLeapMonthToken,
   icuMonthNumber,
 } from "./icu";
+import { rdFromDate, weekdayFromRd, gregorianFromRd } from "./calendarMath";
+import { nowruzRd } from "./astronomy";
+import {
+  armenianFromRd, rdFromArmenian, armenianMonthLength, ARMENIAN_MONTHS, ARMENIAN_MONTHS_HY,
+  nanakshahiFromRd, rdFromNanakshahi, nanakshahiMonthLength, NANAKSHAHI_MONTHS, NANAKSHAHI_MONTHS_PA,
+  assyrianFromRd, rdFromAssyrian, assyrianMonthLength, ASSYRIAN_MONTHS, ASSYRIAN_MONTHS_SYR,
+  bahaiFromRd, rdFromBahai, bahaiMonthLength, BAHAI_MONTHS, BAHAI_MONTHS_IN_YEAR,
+  javaneseFromRd, rdFromJavanese, javaneseMonthLength, JAVANESE_MONTHS,
+  haabYearFromRd, rdFromHaabYear, haabMonthLength, HAAB_MONTHS,
+} from "./traditionalCalendars";
+
+/**
+ * The calendars computed in lib/traditionalCalendars, described uniformly so
+ * the year offset, the month grid and the today marker all come from the same
+ * implementation. Keeping a second hand-maintained offset per calendar is what
+ * let the Armenian date string and its year navigation disagree by 1104 years.
+ */
+type TraditionalCalendar = {
+  fromRd: (rd: number) => { year: number; month: number; day: number };
+  toRd: (year: number, month: number, day: number) => number;
+  monthLength: (year: number, month: number) => number;
+  monthsInYear: number;
+  namesEn: string[];
+  namesOriginal?: string[];
+};
+
+const TRADITIONAL: Record<string, TraditionalCalendar> = {
+  armenian: {
+    fromRd: armenianFromRd,
+    toRd: rdFromArmenian,
+    monthLength: (_year, month) => armenianMonthLength(month),
+    monthsInYear: 13,
+    namesEn: ARMENIAN_MONTHS,
+    namesOriginal: ARMENIAN_MONTHS_HY,
+  },
+  sikh: {
+    fromRd: nanakshahiFromRd,
+    toRd: rdFromNanakshahi,
+    monthLength: nanakshahiMonthLength,
+    monthsInYear: 12,
+    namesEn: NANAKSHAHI_MONTHS,
+    namesOriginal: NANAKSHAHI_MONTHS_PA,
+  },
+  assyrian: {
+    fromRd: assyrianFromRd,
+    toRd: rdFromAssyrian,
+    monthLength: assyrianMonthLength,
+    monthsInYear: 12,
+    namesEn: ASSYRIAN_MONTHS,
+    namesOriginal: ASSYRIAN_MONTHS_SYR,
+  },
+  bahai: {
+    fromRd: bahaiFromRd,
+    toRd: rdFromBahai,
+    monthLength: bahaiMonthLength,
+    monthsInYear: BAHAI_MONTHS_IN_YEAR,
+    namesEn: BAHAI_MONTHS,
+  },
+  javanese: {
+    fromRd: javaneseFromRd,
+    toRd: rdFromJavanese,
+    monthLength: javaneseMonthLength,
+    monthsInYear: 12,
+    namesEn: JAVANESE_MONTHS,
+  },
+  mayan: {
+    fromRd: haabYearFromRd,
+    toRd: rdFromHaabYear,
+    monthLength: (_year, month) => haabMonthLength(month),
+    monthsInYear: 19,
+    namesEn: HAAB_MONTHS,
+  },
+};
 
 const ISLAMIC_MONTH_NAMES_AR = [
   "مُحَرَّم", "صَفَر", "رَبِيع ٱلْأَوَّل", "رَبِيع ٱلثَّانِي", "جُمَادَىٰ ٱلْأُولَىٰ", "جُمَادَىٰ ٱلثَّانِيَة",
@@ -73,14 +146,27 @@ export function getTodayHijri(): { year: number; month: number; day: number } | 
   return todayIn(ICU_CALENDARS.islamic);
 }
 
-/** Default year for calendar view when no ?year= param. Uses each calendar's native year. */
+/**
+ * Default year for a calendar view when there is no ?year= param.
+ *
+ * Every branch is derived from the implementation that renders the date, so
+ * the navigation cannot drift from what the calendar actually says. The old
+ * hand-written offsets were wrong for part of every year wherever a calendar's
+ * new year is not 1 January - and the Armenian pair disagreed by 1104 years.
+ */
 export function getDefaultYearForCalendar(calendarId: string): number {
-  const gregorianYear = new Date().getFullYear();
+  const now = new Date();
+  const gregorianYear = now.getFullYear();
+  const rd = rdFromDate(now);
+
   // The library-backed cases can yield NaN when the underlying package fails to
   // load, and `??` does not catch NaN. A non-finite default would poison the
   // served year range and 404 every month page for that calendar.
   const finite = (value: number | undefined, fallback: number) =>
     Number.isFinite(value) ? (value as number) : fallback;
+
+  const traditional = TRADITIONAL[calendarId];
+  if (traditional) return traditional.fromRd(rd).year;
 
   switch (calendarId) {
     // ICU-backed: read the year from the calendar itself rather than keeping a
@@ -101,21 +187,11 @@ export function getDefaultYearForCalendar(calendarId: string): number {
       return finite(getTodayHebrew()?.year, gregorianYear + 3761);
     case "buddhist":
     case "thai-solar":
+      // Thailand's Buddhist year has rolled over on 1 January since 1941.
       return gregorianYear + 543;
     case "persian":
-      return gregorianYear - 621;
-    case "armenian":
-      return gregorianYear + 552;
-    case "sikh":
-      return gregorianYear - 1469;
-    case "assyrian":
-      return gregorianYear + 4750;
-    case "javanese":
-      return gregorianYear;
-    case "mayan":
-      return gregorianYear;
-    case "bahai":
-      return gregorianYear - 1844;
+      // The Solar Hijri year rolls over at Nowruz, not on 1 January.
+      return gregorianYear - 621 - (rd < nowruzRd(gregorianYear) ? 1 : 0);
     default:
       return gregorianYear;
   }
@@ -180,26 +256,57 @@ const PERSIAN_MONTH_NAMES_FA = [
   "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند",
 ];
 
+/**
+ * Six months of 31 days, five of 30, and Esfand running to the next Nowruz.
+ *
+ * This used to call `DateTime.fromObject({ year, month }, { outputCalendar: "persian" })`,
+ * but Luxon's `outputCalendar` only affects formatting - it does not interpret
+ * input - so that built Gregorian year 1405 CE and reported February as 28 days.
+ */
 export function getPersianYearStructure(persianYear: number): MonthStructure[] {
+  const yearStart = nowruzRd(persianYear + 621);
+  const nextYearStart = nowruzRd(persianYear + 622);
+
   const result: MonthStructure[] = [];
+  let cursor = yearStart;
   for (let month = 1; month <= 12; month++) {
-    const dt = DateTime.fromObject({ year: persianYear, month }, { outputCalendar: "persian" });
-    const daysInMonth = dt.endOf("month").day;
-    const firstWeekday = (dt.weekday - 1 + 7) % 7;
+    const daysCount =
+      month <= 6 ? 31 : month <= 11 ? 30 : nextYearStart - cursor;
     result.push({
       monthNameEn: PERSIAN_MONTH_NAMES[month - 1] ?? "",
       monthNameOriginal: PERSIAN_MONTH_NAMES_FA[month - 1],
-      daysCount: daysInMonth,
-      firstWeekday,
+      daysCount,
+      firstWeekday: weekdayFromRd(cursor),
     });
+    cursor += daysCount;
   }
   return result;
 }
 
+/** RD of the first day of a Persian month. */
+function rdFromPersian(persianYear: number, month: number, day: number): number {
+  const offset = month <= 6 ? 31 * (month - 1) : 6 * 31 + 30 * (month - 7);
+  return nowruzRd(persianYear + 621) + offset + day - 1;
+}
+
+/** Which Persian year, month and day an RD falls on. */
+function persianFromRd(rd: number): { year: number; month: number; day: number } {
+  const { year: g } = gregorianFromRd(rd);
+  const year = g - 621 - (rd < nowruzRd(g) ? 1 : 0);
+  const dayOfYear = rd - nowruzRd(year + 621);
+  const month =
+    dayOfYear < 186 ? Math.floor(dayOfYear / 31) + 1 : Math.floor((dayOfYear - 186) / 30) + 7;
+  return { year, month, day: rd - rdFromPersian(year, month, 1) + 1 };
+}
+
+/**
+ * Luxon's `.year` / `.month` / `.day` getters stay Gregorian whatever
+ * `outputCalendar` says, so reading them off a reconfigured DateTime returned
+ * today's Gregorian date and the Persian month view never highlighted today.
+ */
 export function getTodayPersian(): { year: number; month: number; day: number } | null {
   try {
-    const dt = DateTime.now().reconfigure({ outputCalendar: "persian" });
-    return { year: dt.year, month: dt.month, day: dt.day };
+    return persianFromRd(rdFromDate(new Date()));
   } catch {
     return null;
   }
@@ -274,11 +381,17 @@ export type MonthInfo = {
  */
 export const MONTH_RANGES: Record<string, number> = {
   gregorian: 12, persian: 12, japanese: 12, buddhist: 12, "thai-solar": 12,
-  javanese: 12, armenian: 12, sikh: 12, assyrian: 12, hindu: 12,
-  islamic: 12,
+  javanese: 12, sikh: 12, assyrian: 12, hindu: 12, islamic: 12,
   // Lunisolar and 13-month calendars.
   hebrew: 13, ethiopian: 13, coptic: 13, chinese: 13, korean: 13,
-  bahai: 19,
+  // The traditional Armenian year is 12 months of 30 days plus the five
+  // epagomenal days of Aweleac, which need a slot of their own.
+  armenian: 13,
+  // Eighteen 19-day months, then Ayyam-i-Ha, then the 19-day month of the fast.
+  bahai: 20,
+  // The Haab round: eighteen 20-day months plus the five days of Wayeb. Without
+  // an entry here getMonthInfo returned null and every Mayan month page 404d.
+  mayan: 19,
 };
 
 /**
@@ -304,6 +417,11 @@ export function clampYearToRange(calendarId: string, year: number): number {
   return Math.min(Math.max(Math.trunc(year), minYear), maxYear);
 }
 
+const GREGORIAN_MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
 export function getMonthInfo(
   calendarId: string,
   year: number,
@@ -316,8 +434,7 @@ export function getMonthInfo(
     case "gregorian": {
       const start = DateTime.local(year, month, 1);
       return {
-        monthNameEn: ["January", "February", "March", "April", "May", "June",
-          "July", "August", "September", "October", "November", "December"][month - 1] ?? "",
+        monthNameEn: GREGORIAN_MONTH_NAMES[month - 1] ?? "",
         daysCount: start.daysInMonth ?? 31,
         firstWeekday: start.weekday - 1,
       };
@@ -362,37 +479,30 @@ export function getMonthInfo(
       const m = structure[month - 1];
       return m ? { monthNameEn: m.monthNameEn, monthNameOriginal: m.monthNameOriginal, daysCount: m.daysCount, firstWeekday: m.firstWeekday } : null;
     }
-    case "bahai": {
-      const BAHAI_NAMES = ["Bahá", "Jalál", "Jamál", "ʻAẓamat", "Núr", "Raḥmat", "Kalimát", "Kamál", "Asmáʼ", "ʻIzzat", "Mashíyyat", "ʻIlm", "Qudrat", "Qawl", "Masáʼil", "Sharaf", "Sulṭán", "Mulk", "ʻAláʼ"];
-      return {
-        monthNameEn: BAHAI_NAMES[month - 1] ?? "",
-        daysCount: 19,
-        firstWeekday: 0,
-      };
-    }
     default: {
-      // Still approximate: these calendars render Gregorian month lengths under
-      // their own year numbering. Phase 3 replaces them with real algorithms.
+      const traditional = TRADITIONAL[calendarId];
+      if (traditional) {
+        if (month > traditional.monthsInYear) return null;
+        return {
+          monthNameEn: traditional.namesEn[month - 1] ?? "",
+          monthNameOriginal: traditional.namesOriginal?.[month - 1],
+          daysCount: traditional.monthLength(year, month),
+          firstWeekday: weekdayFromRd(traditional.toRd(year, month, 1)),
+        };
+      }
+
+      // Japanese, Buddhist and Thai Solar genuinely do use Gregorian months
+      // under a different year number, so this branch is correct for them.
       let gYear = year;
       if (calendarId === "buddhist" || calendarId === "thai-solar") gYear = year - 543;
-      else if (calendarId === "sikh") gYear = year + 1469;
-      else if (calendarId === "assyrian") gYear = year - 4750;
-      else if (calendarId === "armenian") gYear = year - 552;
       const start = DateTime.local(gYear, month, 1);
       const names: Record<string, string[]> = {
-        buddhist: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
-        "thai-solar": ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
-        hindu: ["Chaitra", "Vaisakha", "Jyaistha", "Asadha", "Sravana", "Bhadra", "Asvina", "Kartika", "Agrahayana", "Pausa", "Magha", "Phalguna"],
-        japanese: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
-        coptic: ["Thout", "Phaophi", "Hathor", "Koiak", "Tobi", "Meshir", "Paremhat", "Parmouti", "Pashons", "Paoni", "Epip", "Mesori"],
-        armenian: ["Nawasardi", "Hoṙi", "Sahmi", "Trē", "Kʻaloch", "Arach", "Mehekani", "Areg", "Ahekani", "Mareri", "Margach", "Hrotich"],
-        sikh: ["Chet", "Vaisakh", "Jeth", "Harh", "Sawan", "Bhadon", "Assu", "Katak", "Maghar", "Poh", "Magh", "Phaggan"],
-        assyrian: ["Nisan", "Iyyar", "Sivan", "Tammuz", "Ab", "Elul", "Tishrin I", "Tishrin II", "Shabat", "Adar", "Nisan II", "Ilul"],
-        javanese: ["Sura", "Sapar", "Mulud", "Bakda Mulud", "Jumadilawal", "Jumadilakir", "Rejeb", "Ruwah", "Pasa", "Sawal", "Sela", "Dulkangidah"],
+        buddhist: GREGORIAN_MONTH_NAMES,
+        "thai-solar": GREGORIAN_MONTH_NAMES,
+        japanese: GREGORIAN_MONTH_NAMES,
       };
-      const monthNames = names[calendarId] ?? ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
       return {
-        monthNameEn: monthNames[month - 1] ?? "",
+        monthNameEn: (names[calendarId] ?? GREGORIAN_MONTH_NAMES)[month - 1] ?? "",
         daysCount: start.daysInMonth ?? 30,
         firstWeekday: start.weekday - 1,
       };
@@ -400,50 +510,52 @@ export function getMonthInfo(
   }
 }
 
-/** If today falls in the given (calendarId, year, month), return the day number (1–N); else null. */
+/**
+ * If today falls in the given (calendarId, year, month), the day number; else null.
+ *
+ * Every calendar resolves through its own implementation. The previous default
+ * branch carried its own offsets, which had gone stale: `hindu` still used the
+ * Vikram Samvat `+ 57` against a calendar that is now Saka, so today was never
+ * highlighted, and `coptic` compared a Gregorian month number to a Coptic one
+ * and then returned the Gregorian day.
+ */
 export function getTodayDayInMonth(
   calendarId: string,
   year: number,
   month: number
 ): number | null {
   const now = new Date();
+  const matches = (t: { year: number; month: number; day: number } | null | undefined) =>
+    t && t.year === year && t.month === month ? t.day : null;
+
+  const traditional = TRADITIONAL[calendarId];
+  if (traditional) return matches(traditional.fromRd(rdFromDate(now)));
+
   switch (calendarId) {
-    case "gregorian": {
-      if (now.getFullYear() !== year || now.getMonth() + 1 !== month) return null;
-      return now.getDate();
-    }
-    case "islamic": {
-      const t = getTodayHijri();
-      if (!t || t.year !== year || t.month !== month) return null;
-      return t.day;
-    }
-    case "hebrew": {
-      const t = getTodayHebrew();
-      if (!t || t.year !== year || t.month !== month) return null;
-      return t.day;
-    }
-    case "persian": {
-      const t = getTodayPersian();
-      if (!t || t.year !== year || t.month !== month) return null;
-      return t.day;
-    }
+    case "gregorian":
+      return matches({ year: now.getFullYear(), month: now.getMonth() + 1, day: now.getDate() });
+    case "buddhist":
+    case "thai-solar":
+      return matches({ year: now.getFullYear() + 543, month: now.getMonth() + 1, day: now.getDate() });
+    case "japanese":
+      return matches({ year: now.getFullYear(), month: now.getMonth() + 1, day: now.getDate() });
+    case "islamic":
+      return matches(getTodayHijri());
+    case "hebrew":
+      return matches(getTodayHebrew());
+    case "persian":
+      return matches(getTodayPersian());
     case "ethiopian":
+      return matches(todayIn(ICU_CALENDARS.ethiopian));
+    case "coptic":
+      return matches(todayIn(ICU_CALENDARS.coptic));
+    case "hindu":
+      return matches(todayIn(ICU_CALENDARS.hindu));
     case "chinese":
+      return matches(todayIn(ICU_CALENDARS.chinese));
     case "korean":
+      return matches(todayIn(ICU_CALENDARS.korean));
+    default:
       return null;
-    default: {
-      const gy = now.getFullYear();
-      const gm = now.getMonth() + 1;
-      const gd = now.getDate();
-      let calYear = gy;
-      if (calendarId === "buddhist" || calendarId === "thai-solar") calYear = gy + 543;
-      else if (calendarId === "hindu") calYear = gy + 57;
-      else if (calendarId === "sikh") calYear = gy + 1469;
-      else if (calendarId === "assyrian") calYear = gy + 4750;
-      else if (calendarId === "armenian") calYear = gy + 552;
-      else if (calendarId === "coptic") calYear = gy - 284;
-      if (calYear !== year || gm !== month) return null;
-      return gd;
-    }
   }
 }
