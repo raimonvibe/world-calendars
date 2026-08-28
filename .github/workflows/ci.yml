@@ -28,7 +28,8 @@ jobs:
       # data. Node 22 ships it by default; this guards against a slim runtime
       # silently reducing the suite to English-only formatting.
       - name: Check ICU availability
-        run: node -e "const s=new Intl.DateTimeFormat('en-u-ca-hebrew').resolvedOptions().calendar; if(s!=='hebrew') throw new Error('Full ICU missing, got: '+s)"
+        run: |
+          node -e "const s=new Intl.DateTimeFormat('en-u-ca-hebrew').resolvedOptions().calendar; if(s!=='hebrew') throw new Error('Full ICU missing, got: '+s)"
 
       - name: Test
         run: npm test
