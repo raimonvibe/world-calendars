@@ -156,8 +156,8 @@ describe("lunar and lunisolar grids", () => {
   });
 });
 
-describe("month grids — known broken, fixed in phase 3", () => {
-  it.fails("bahai year accounts for the intercalary Ayyam-i-Ha days", () => {
+describe("month grids for the calendars implemented in phase 3", () => {
+  it("bahai year accounts for the intercalary Ayyam-i-Ha days", () => {
     // 19 months x 19 days is 361; the year needs 4 or 5 intercalary days.
     const year = getDefaultYearForCalendar("bahai");
     expect(yearLength("bahai", year)).toBeGreaterThan(361);

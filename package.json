@@ -11,7 +11,8 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "audit": "vitest run --config vitest.audit.mts"
   },
   "dependencies": {
     "@hebcal/core": "^6.0.8",

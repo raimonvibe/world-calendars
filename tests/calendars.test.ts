@@ -73,10 +73,11 @@ describe("calendars that are already correct", () => {
 });
 
 /**
- * Calendars moved onto ICU in phase 2. These were `it.fails` while the
- * hand-rolled arithmetic was in place; they now assert the fixed behaviour.
+ * Calendars moved onto ICU in phase 2, and the six computed from their own
+ * rules in phase 3. All of these were `it.fails` while the hand-rolled
+ * arithmetic was in place; they now assert the fixed behaviour.
  */
-describe("calendars fixed in phase 2 (ICU-backed)", () => {
+describe("calendars fixed in phases 2 and 3", () => {
   const anchors = [day(2026, 8, 10), day(2026, 1, 15), day(2026, 9, 15), day(2026, 4, 5)];
 
   it("islamic returns a real Hijri year, not 0", () => {
@@ -120,16 +121,16 @@ describe("calendars fixed in phase 2 (ICU-backed)", () => {
     );
   });
 
-  it.fails("mayan long count is correct at the 13.0.0.0.0 anchor", () => {
+  it("mayan long count is correct at the 13.0.0.0.0 anchor", () => {
     // 21 December 2012 is 13.0.0.0.0 under the GMT (584283) correlation.
     expect(getCalendarInfo("mayan", day(2012, 12, 21)).dateString).toContain("13.0.0.0.0");
   });
 
-  it.fails("bahai shows a Badi' year, not the Gregorian year", () => {
+  it("bahai shows a Badi' year, not the Gregorian year", () => {
     expect(getCalendarInfo("bahai", day(2026, 8, 10)).dateString).not.toContain("2026");
   });
 
-  it.fails("javanese is not just a Gregorian date", () => {
+  it("javanese is not just a Gregorian date", () => {
     expect(getCalendarInfo("javanese", day(2026, 8, 10)).dateString).not.toContain("2026");
   });
 
@@ -143,7 +144,7 @@ describe("calendars fixed in phase 2 (ICU-backed)", () => {
 });
 
 describe("internal consistency", () => {
-  it.fails("armenian year agrees between the date string and the year navigation", async () => {
+  it("armenian year agrees between the date string and the year navigation", async () => {
     const { getDefaultYearForCalendar } = await import("@/lib/calendarViews");
     const dateString = getCalendarInfo("armenian", day(2026, 8, 10)).dateString;
     const navYear = getDefaultYearForCalendar("armenian");

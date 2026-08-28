@@ -2,9 +2,11 @@
  * Calendar display logic: get "today" in each calendar system + 1–2 fun facts.
  *
  * Islamic, Coptic, Ethiopian, Chinese, Korean, Japanese and Indian dates come
- * from ICU via lib/icu. Hebrew uses @hebcal/core and Persian uses Luxon, both
- * of which are already correct. The remainder are still approximate - see
- * docs/CALENDAR_ACCURACY.md for exactly which and why.
+ * from ICU via lib/icu. Hebrew uses @hebcal/core and Persian uses Luxon. The
+ * six calendars ICU does not implement - Mayan, Armenian, Sikh, Assyrian,
+ * Baha'i and Javanese - are computed from their own rules in
+ * lib/traditionalCalendars. See docs/CALENDAR_ACCURACY.md for what each one is
+ * checked against.
  */
 
 import { DateTime } from "luxon";
@@ -16,6 +18,31 @@ import {
   isLeapMonthToken,
   icuMonthNumber,
 } from "./icu";
+import { rdFromDate, weekdayFromRd } from "./calendarMath";
+import {
+  mayanLongCountFromRd,
+  formatLongCount,
+  tzolkinFromRd,
+  haabFromRd,
+  armenianFromRd,
+  ARMENIAN_MONTHS,
+  ARMENIAN_MONTHS_HY,
+  nanakshahiFromRd,
+  NANAKSHAHI_MONTHS,
+  NANAKSHAHI_MONTHS_PA,
+  assyrianFromRd,
+  ASSYRIAN_MONTHS,
+  ASSYRIAN_MONTHS_SYR,
+  bahaiFromRd,
+  bahaiAyyamIHaLength,
+  BAHAI_MONTHS,
+  BAHAI_MONTH_MEANINGS,
+  BAHAI_AYYAM_I_HA_INDEX,
+  javaneseFromRd,
+  JAVANESE_MONTHS,
+  pasaranFromRd,
+  winduYearName,
+} from "./traditionalCalendars";
 
 export type CalendarInfo = {
   id: string;
@@ -270,96 +297,113 @@ export function getKorean(d: Date): CalendarInfo {
   };
 }
 
-/** Javanese: simplified stub (complex cycle) */
+/** Javanese: Anno Javanico, with the pasaran day that makes up the weton */
 export function getJavanese(d: Date): CalendarInfo {
-  const dt = DateTime.fromJSDate(d);
+  const rd = rdFromDate(d);
+  const { year, month, day } = javaneseFromRd(rd);
+  const pasaran = pasaranFromRd(rd);
+  const weekday = ["Senin", "Selasa", "Rebo", "Kemis", "Jemuwah", "Setu", "Ngahad"][
+    weekdayFromRd(rd)
+  ];
+
   return {
     id: "javanese",
     name: "Javanese",
-    dateString: dt.toFormat("d MMMM yyyy") + " (CE)",
+    dateString: `${day} ${JAVANESE_MONTHS[month - 1]} ${year} AJ`,
+    dateOriginal: `${weekday} ${pasaran}`,
     facts: [
-      "Combines Islamic, Hindu and indigenous cycles.",
-      "Used traditionally in Java, Indonesia.",
+      `Today is ${weekday} ${pasaran} — the weton, where the 7-day week meets the 5-day pasaran.`,
+      `Year ${year} is ${winduYearName(year)} of the eight-year windu cycle.`,
     ],
   };
 }
 
-/** Armenian: traditional (year 1 = 552 CE) */
+/** Armenian: the traditional 365-day wandering year, epoch 11 July 552 CE */
 export function getArmenian(d: Date): CalendarInfo {
-  const y = d.getFullYear();
-  const armYear = y - 552;
-  const dt = DateTime.fromJSDate(d);
+  const { year, month, day } = armenianFromRd(rdFromDate(d));
+  const monthName = ARMENIAN_MONTHS[month - 1];
+
   return {
     id: "armenian",
     name: "Armenian",
-    dateString: `${dt.toFormat("d MMMM")} ${armYear}`,
+    dateString: `${day} ${monthName} ${year}`,
+    dateOriginal: `${day} ${ARMENIAN_MONTHS_HY[month - 1]} ${year}`,
     facts: [
       "Traditional Armenian calendar; year 1 = 552 CE.",
-      "Fixed calendar (no leap day in same way as Gregorian).",
+      month === 13
+        ? "These are the five epagomenal days of Aweleacʻ, outside the twelve months."
+        : "Every year is exactly 365 days, so the calendar drifts through the seasons.",
     ],
   };
 }
 
-/** Mayan: Long Count / Calendar Round stub */
+/** Mayan: Long Count plus the Calendar Round (Tzolkʼin and Haabʼ) */
 export function getMayan(d: Date): CalendarInfo {
-  const start = new Date(-3114, 7, 11);
-  const diff = Math.floor((d.getTime() - start.getTime()) / 86400000);
-  const baktun = Math.floor(diff / 144000) % 20;
-  const katun = Math.floor(diff / 7200) % 20;
-  const tun = Math.floor(diff / 360) % 20;
-  const uinal = Math.floor(diff / 20) % 18;
-  const kin = diff % 20;
+  const rd = rdFromDate(d);
+  const longCount = mayanLongCountFromRd(rd);
+  const tzolkin = tzolkinFromRd(rd);
+  const haab = haabFromRd(rd);
+
   return {
     id: "mayan",
     name: "Mayan",
-    dateString: `Long Count: ${baktun}.${katun}.${tun}.${uinal}.${kin}`,
+    dateString: `Long Count: ${formatLongCount(longCount)}`,
+    dateOriginal: `${tzolkin.number} ${tzolkin.name} ${haab.day} ${haab.month}`,
     facts: [
+      `Calendar Round: ${tzolkin.number} ${tzolkin.name} ${haab.day} ${haab.month}.`,
       "Long Count: cycles of 20 (kins, uinals, tuns, katuns, baktuns).",
-      "Classic Maya civilization used this calendar.",
     ],
   };
 }
 
-/** Baha'i: stub (solar, 19 months × 19 days + intercalary) */
+/** Baha'i: the Badí' calendar, 19 months of 19 days plus Ayyám-i-Há */
 export function getBahai(d: Date): CalendarInfo {
-  const dt = DateTime.fromJSDate(d);
+  const { year, month, day } = bahaiFromRd(rdFromDate(d));
+  const isAyyamIHa = month === BAHAI_AYYAM_I_HA_INDEX;
+  const monthName = BAHAI_MONTHS[month - 1];
+
   return {
     id: "bahai",
     name: "Baha'i",
-    dateString: dt.toFormat("d MMMM yyyy") + " (BE approx.)",
+    dateString: `${monthName} ${day}, ${year} BE`,
+    dateOriginal: isAyyamIHa ? undefined : `${monthName} (${BAHAI_MONTH_MEANINGS[month - 1]})`,
     facts: [
-      "Badi' calendar: 19 months of 19 days + intercalary days.",
-      "Year 1 = 1844 CE (Declaration of the Báb).",
+      isAyyamIHa
+        ? `Ayyám-i-Há: the ${bahaiAyyamIHaLength(year)} intercalary days of hospitality before the fast.`
+        : "Badí' calendar: 19 months of 19 days plus the intercalary Ayyám-i-Há.",
+      "Year 1 = 1844 CE; the year begins at Naw-Rúz, on the March equinox.",
     ],
   };
 }
 
-/** Sikh (Nanakshahi): year 1 = 1469 CE */
+/** Sikh (Nanakshahi): fixed solar months, the year beginning 14 March */
 export function getSikh(d: Date): CalendarInfo {
-  const y = d.getFullYear() - 1469;
-  const dt = DateTime.fromJSDate(d);
+  const { year, month, day } = nanakshahiFromRd(rdFromDate(d));
+
   return {
     id: "sikh",
     name: "Sikh (Nanakshahi)",
-    dateString: `${dt.toFormat("d MMMM")} ${y} NS`,
+    dateString: `${day} ${NANAKSHAHI_MONTHS[month - 1]} ${year} NS`,
+    dateOriginal: `${day} ${NANAKSHAHI_MONTHS_PA[month - 1]} ${year}`,
     facts: [
-      "Nanakshahi: starts from birth of Guru Nanak (1469 CE).",
-      "Adopted in 1998 by SGPC for Sikh dates.",
+      "Nanakshahi: year 1 is 1469 CE, the birth of Guru Nanak.",
+      "A fixed solar calendar; Chet 1, the new year, is always 14 March.",
     ],
   };
 }
 
-/** Assyrian: approximate (year 1 = 4750 BCE) */
+/** Assyrian: Syriac months, the year beginning on 1 April (Kha b-Nisan) */
 export function getAssyrian(d: Date): CalendarInfo {
-  const y = d.getFullYear() + 4750;
-  const dt = DateTime.fromJSDate(d);
+  const { year, month, day } = assyrianFromRd(rdFromDate(d));
+
   return {
     id: "assyrian",
     name: "Assyrian",
-    dateString: `${dt.toFormat("d MMMM")} ${y}`,
+    dateString: `${day} ${ASSYRIAN_MONTHS[month - 1]} ${year}`,
+    dateOriginal: `${day} ${ASSYRIAN_MONTHS_SYR[month - 1]} ${year}`,
     facts: [
       "Assyrian/Syriac calendar; year 1 ≈ 4750 BCE.",
-      "Used by some Assyrian and Syriac Christian communities.",
+      "The year begins at Kha b-Nisan, 1 April.",
     ],
   };
 }
