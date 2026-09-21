@@ -15,7 +15,7 @@
     "audit": "vitest run --config vitest.audit.mts"
   },
   "dependencies": {
-    "@hebcal/core": "^6.9.2",
+    "@hebcal/core": "^6.9.3",
     "lucide-react": "^0.577.0",
     "luxon": "^3.7.2",
     "next": "16.3.5",
