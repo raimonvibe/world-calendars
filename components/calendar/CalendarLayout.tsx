@@ -93,7 +93,7 @@ export default function CalendarLayout({
                   <ChevronLeft className="size-5" />
                 </span>
               )}
-              <span className="min-w-[3rem] text-center text-sm font-semibold text-zinc-900 dark:text-zinc-100 sm:min-w-[4rem] sm:text-base">
+              <span className="min-w-12 text-center text-sm font-semibold text-zinc-900 dark:text-zinc-100 sm:min-w-16 sm:text-base">
                 {year}
               </span>
               {canGoNext ? (

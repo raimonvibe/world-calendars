@@ -36,7 +36,7 @@ export default function MonthView({
   return (
     <div className="space-y-6 sm:space-y-8">
     <section
-      className="min-w-0 max-w-full overflow-x-auto rounded-2xl border border-white/20 bg-white/70 p-3 shadow-lg backdrop-blur-sm dark:border-zinc-600/30 dark:bg-zinc-800/70 sm:p-6"
+      className="min-w-0 max-w-full overflow-x-auto rounded-2xl border border-white/20 bg-white/70 p-3 shadow-lg backdrop-blur-xs dark:border-zinc-600/30 dark:bg-zinc-800/70 sm:p-6"
       aria-label={`${monthInfo.monthNameEn} ${year} — calendar month`}
       role="region"
     >
@@ -50,7 +50,7 @@ export default function MonthView({
 
       <div className="grid min-w-[280px] grid-cols-7 gap-1 sm:gap-2" role="grid" aria-label={`Days of ${monthInfo.monthNameEn}`}>
         {Array.from({ length: offset }, (_, i) => (
-          <div key={`empty-${i}`} className="min-h-[5rem] sm:min-h-[6.5rem] md:min-h-[7rem]" aria-hidden />
+          <div key={`empty-${i}`} className="min-h-20 sm:min-h-26 md:min-h-28" aria-hidden />
         ))}
         {Array.from({ length: daysCount }, (_, i) => {
           const day = i + 1;

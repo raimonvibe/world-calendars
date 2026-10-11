@@ -11,7 +11,7 @@ type DayCellProps = {
 export default function DayCell({ day, isToday, original }: DayCellProps) {
   return (
     <span
-      className={`flex min-h-10 min-w-10 items-center justify-center rounded-md py-1 text-sm sm:min-h-11 sm:min-w-11 md:min-h-[2.75rem] md:min-w-[2.75rem] ${
+      className={`flex min-h-10 min-w-10 items-center justify-center rounded-md py-1 text-sm sm:min-h-11 sm:min-w-11 md:min-h-11 md:min-w-11 ${
         isToday
           ? "bg-zinc-900 font-semibold text-white dark:bg-zinc-100 dark:text-zinc-900"
           : "text-zinc-700 dark:text-zinc-300"

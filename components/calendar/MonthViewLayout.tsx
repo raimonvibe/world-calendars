@@ -126,7 +126,7 @@ export default function MonthViewLayout({
                     <ChevronLeft className="size-5" />
                   </span>
                 )}
-                <span className="min-w-[3rem] px-1 text-center text-sm font-semibold text-zinc-900 dark:text-zinc-100" aria-hidden>
+                <span className="min-w-12 px-1 text-center text-sm font-semibold text-zinc-900 dark:text-zinc-100" aria-hidden>
                   {month}/{year}
                 </span>
                 {canGoNext ? (

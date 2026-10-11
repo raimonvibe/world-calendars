@@ -43,7 +43,7 @@ export default function MonthGrid({
 
   const content = (
     <article
-      className={`rounded-xl border border-white/20 bg-white/70 p-4 shadow-lg backdrop-blur-sm dark:border-zinc-600/30 dark:bg-zinc-800/70 ${href ? "transition hover:shadow-xl hover:border-zinc-300/50 dark:hover:border-zinc-500/50 cursor-pointer" : ""}`}
+      className={`rounded-xl border border-white/20 bg-white/70 p-4 shadow-lg backdrop-blur-xs dark:border-zinc-600/30 dark:bg-zinc-800/70 ${href ? "transition hover:shadow-xl hover:border-zinc-300/50 dark:hover:border-zinc-500/50 cursor-pointer" : ""}`}
       aria-label={ariaLabel ?? `${monthNameEn}`}
     >
       <h2 className="mb-3 text-center font-semibold text-zinc-900 dark:text-zinc-100">

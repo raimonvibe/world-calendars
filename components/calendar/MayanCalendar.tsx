@@ -36,7 +36,7 @@ export default function MayanCalendar({ year }: MayanCalendarProps) {
     <div className="space-y-6">
       <section className="space-y-6" aria-label="Mayan calendar — Long Count, Tzolkin, Haab">
         <article
-          className="rounded-xl border border-white/20 bg-white/70 p-6 shadow-lg backdrop-blur-sm dark:border-zinc-600/30 dark:bg-zinc-800/70"
+          className="rounded-xl border border-white/20 bg-white/70 p-6 shadow-lg backdrop-blur-xs dark:border-zinc-600/30 dark:bg-zinc-800/70"
           aria-label="Long Count"
         >
           <h2 className="mb-2 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
@@ -52,7 +52,7 @@ export default function MayanCalendar({ year }: MayanCalendarProps) {
 
         <div className="grid gap-6 sm:grid-cols-2">
           <article
-            className="rounded-xl border border-white/20 bg-white/70 p-5 shadow-lg backdrop-blur-sm dark:border-zinc-600/30 dark:bg-zinc-800/70"
+            className="rounded-xl border border-white/20 bg-white/70 p-5 shadow-lg backdrop-blur-xs dark:border-zinc-600/30 dark:bg-zinc-800/70"
             aria-label="Tzolkin (260-day sacred count)"
           >
             <h2 className="mb-2 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
@@ -67,7 +67,7 @@ export default function MayanCalendar({ year }: MayanCalendarProps) {
           </article>
 
           <article
-            className="rounded-xl border border-white/20 bg-white/70 p-5 shadow-lg backdrop-blur-sm dark:border-zinc-600/30 dark:bg-zinc-800/70"
+            className="rounded-xl border border-white/20 bg-white/70 p-5 shadow-lg backdrop-blur-xs dark:border-zinc-600/30 dark:bg-zinc-800/70"
             aria-label="Haab (365-day solar count)"
           >
             <h2 className="mb-2 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
