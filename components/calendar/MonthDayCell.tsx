@@ -29,7 +29,7 @@ export default function MonthDayCell({
     <div
       role="gridcell"
       aria-label={ariaLabel}
-      className={`flex min-h-[5rem] flex-col rounded-lg border p-2 sm:min-h-[6.5rem] md:min-h-[7rem] ${
+      className={`flex min-h-20 flex-col rounded-lg border p-2 sm:min-h-26 md:min-h-28 ${
         isToday
           ? "border-zinc-900 bg-zinc-900/10 dark:border-zinc-100 dark:bg-zinc-100/10"
           : "border-zinc-200/60 bg-white/80 dark:border-zinc-600/40 dark:bg-zinc-800/80"

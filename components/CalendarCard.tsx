@@ -25,7 +25,7 @@ export default function CalendarCard({ info }: CalendarCardProps) {
 
   return (
     <Link href={`/calendar/${info.id}`} className="block min-w-0 transition hover:opacity-95">
-      <article className="relative min-h-[12rem] min-w-0 overflow-hidden rounded-2xl border border-zinc-200/60 shadow-lg transition hover:shadow-xl dark:border-zinc-600/40">
+      <article className="relative min-h-48 min-w-0 overflow-hidden rounded-2xl border border-zinc-200/60 shadow-lg transition hover:shadow-xl dark:border-zinc-600/40">
         {/* Per-calendar gradient: light mode */}
         <div
           className="absolute inset-0 rounded-2xl transition-opacity dark:opacity-0"
@@ -39,7 +39,7 @@ export default function CalendarCard({ info }: CalendarCardProps) {
           aria-hidden
         />
         {/* Content overlay for readability */}
-        <div className="relative z-10 min-w-0 rounded-2xl bg-white/80 p-4 backdrop-blur-sm dark:bg-black/40 sm:p-5">
+        <div className="relative z-10 min-w-0 rounded-2xl bg-white/80 p-4 backdrop-blur-xs dark:bg-black/40 sm:p-5">
           {/* Accent line */}
           <div
             className="absolute left-0 top-0 h-full w-1 rounded-l-2xl sm:w-1.5"
@@ -50,7 +50,7 @@ export default function CalendarCard({ info }: CalendarCardProps) {
             {/* Top: where this calendar is used */}
             <div className="mb-2 flex min-w-0 items-start gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400 sm:mb-3">
               <MapPin className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-              <span className="min-w-0 break-words leading-snug">Used in: {countries}</span>
+              <span className="min-w-0 wrap-break-word leading-snug">Used in: {countries}</span>
             </div>
 
             {/* Icon + calendar name */}
@@ -70,7 +70,7 @@ export default function CalendarCard({ info }: CalendarCardProps) {
             {/* Original script date (when available) */}
             {info.dateOriginal && (
               <p
-                className="mb-1 min-w-0 break-words text-base font-medium leading-relaxed text-zinc-800 dark:text-zinc-200 sm:text-lg"
+                className="mb-1 min-w-0 wrap-break-word text-base font-medium leading-relaxed text-zinc-800 dark:text-zinc-200 sm:text-lg"
                 dir="auto"
                 lang={info.id === "hebrew" || info.id === "islamic" ? "he" : info.id === "chinese" ? "zh" : undefined}
               >
@@ -79,7 +79,7 @@ export default function CalendarCard({ info }: CalendarCardProps) {
             )}
 
             {/* English date */}
-            <p className="min-w-0 break-words text-sm font-medium text-zinc-600 dark:text-zinc-400 sm:text-base">
+            <p className="min-w-0 wrap-break-word text-sm font-medium text-zinc-600 dark:text-zinc-400 sm:text-base">
               {info.dateString}
             </p>
 
@@ -88,7 +88,7 @@ export default function CalendarCard({ info }: CalendarCardProps) {
               {info.facts.map((fact, i) => (
                 <li key={i} className="flex min-w-0 gap-2">
                   <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-zinc-400 dark:bg-zinc-500" aria-hidden />
-                  <span className="min-w-0 break-words">{fact}</span>
+                  <span className="min-w-0 wrap-break-word">{fact}</span>
                 </li>
               ))}
             </ul>

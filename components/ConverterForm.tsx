@@ -28,7 +28,7 @@ export default function ConverterForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 rounded-2xl border border-white/20 bg-white/70 p-5 shadow-lg backdrop-blur-sm dark:border-zinc-600/30 dark:bg-zinc-800/70 sm:p-6">
+    <form onSubmit={handleSubmit} className="space-y-4 rounded-2xl border border-white/20 bg-white/70 p-5 shadow-lg backdrop-blur-xs dark:border-zinc-600/30 dark:bg-zinc-800/70 sm:p-6">
       <div>
         <label htmlFor="date" className="mb-1 flex items-center gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
           <CalendarIcon className="size-4" aria-hidden />
@@ -42,7 +42,7 @@ export default function ConverterForm() {
           suppressHydrationWarning
           value={inputDate}
           onChange={(e) => setInputDate(e.target.value)}
-          className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-zinc-900 shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500/20 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
+          className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-zinc-900 shadow-xs focus:border-zinc-500 focus:outline-hidden focus:ring-2 focus:ring-zinc-500/20 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
         />
       </div>
       <div>
@@ -53,7 +53,7 @@ export default function ConverterForm() {
           id="calendar"
           value={targetCalendar}
           onChange={(e) => setTargetCalendar(e.target.value as CalendarId)}
-          className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-zinc-900 shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500/20 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
+          className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-zinc-900 shadow-xs focus:border-zinc-500 focus:outline-hidden focus:ring-2 focus:ring-zinc-500/20 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
         >
           {CALENDAR_IDS.map((id) => (
             <option key={id} value={id}>

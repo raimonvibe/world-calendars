@@ -43,7 +43,7 @@ export default function HolidaysThisMonth({
 
   return (
     <section
-      className="rounded-2xl border border-white/20 bg-white/70 p-4 shadow-lg backdrop-blur-sm dark:border-zinc-600/30 dark:bg-zinc-800/70 sm:p-6"
+      className="rounded-2xl border border-white/20 bg-white/70 p-4 shadow-lg backdrop-blur-xs dark:border-zinc-600/30 dark:bg-zinc-800/70 sm:p-6"
       aria-label={`Holidays in ${monthNameEn}`}
     >
       <h2
@@ -68,10 +68,10 @@ export default function HolidaysThisMonth({
               <span className="flex shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden>
                 {hasInfo ? (isExpanded ? <ChevronDown className="size-5" /> : <ChevronRight className="size-5" />) : null}
               </span>
-              <span className="min-w-[2rem] text-sm font-medium text-zinc-600 dark:text-zinc-400">
+              <span className="min-w-8 text-sm font-medium text-zinc-600 dark:text-zinc-400">
                 Day {day}
               </span>
-              <span className="min-w-0 flex-1 break-words font-medium text-zinc-900 dark:text-zinc-100">
+              <span className="min-w-0 flex-1 wrap-break-word font-medium text-zinc-900 dark:text-zinc-100">
                 {holiday.nameOriginal ? (
                   <>
                     <span dir="auto" className="mr-1">{holiday.nameOriginal}</span>
@@ -122,7 +122,7 @@ export default function HolidaysThisMonth({
                   className={`border-t border-zinc-200/60 dark:border-zinc-600/40 ${isExpanded ? "block" : "hidden"}`}
                 >
                   <div className="px-3 pb-3 pt-1 sm:px-4 sm:pb-4 sm:pt-2">
-                    <p className="max-w-prose break-words text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 sm:text-base">
+                    <p className="max-w-prose wrap-break-word text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 sm:text-base">
                       {holiday.infoEn}
                     </p>
                     {holiday.infoUrl && (
